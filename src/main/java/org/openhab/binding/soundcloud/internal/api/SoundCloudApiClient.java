@@ -32,7 +32,7 @@ public class SoundCloudApiClient {
     private final Gson gson = new Gson();
     private final HttpClient httpClient;
     private final String clientId;
-    private final @Nullable String oauthToken;
+    private @Nullable String oauthToken;
 
     public SoundCloudApiClient(String clientId, @Nullable String oauthToken) {
         this.clientId = clientId;
@@ -41,6 +41,10 @@ public class SoundCloudApiClient {
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
+    }
+
+    public void setOauthToken(String token) {
+        this.oauthToken = token;
     }
 
     // -------------------------------------------------------------------------

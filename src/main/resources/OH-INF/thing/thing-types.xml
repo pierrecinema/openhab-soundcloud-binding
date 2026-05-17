@@ -19,20 +19,24 @@
         <config-description>
             <parameter name="clientId" type="text" required="true">
                 <label>Client ID</label>
-                <description>SoundCloud API Client ID from your registered application (soundcloud.com/you/apps)</description>
+                <description>SoundCloud API Client ID from your registered app at soundcloud.com/you/apps</description>
             </parameter>
             <parameter name="clientSecret" type="text" required="true">
                 <label>Client Secret</label>
-                <description>SoundCloud API Client Secret from your registered application</description>
+                <description>SoundCloud API Client Secret from your registered app</description>
                 <context>password</context>
             </parameter>
             <parameter name="redirectUri" type="text" required="true">
                 <label>Redirect URI</label>
-                <description>OAuth redirect URI registered in your SoundCloud app (e.g. http://localhost)</description>
+                <description>OAuth Redirect URI registered in your SoundCloud app (e.g. http://localhost)</description>
             </parameter>
-            <parameter name="oauthToken" type="text">
-                <label>OAuth Access Token</label>
-                <description>OAuth access token — enter manually or leave empty if not using OAuth</description>
+            <parameter name="authorizationCode" type="text">
+                <label>Authorization Code</label>
+                <description>
+                    First-time setup only: paste the "code" parameter from the redirect URL after authorizing in the browser.
+                    Check the openHAB log for the authorization URL if the thing goes OFFLINE.
+                    After the first successful login this field is no longer needed.
+                </description>
                 <context>password</context>
             </parameter>
         </config-description>
