@@ -28,14 +28,17 @@ public class SoundCloudApiClient {
     private static final String API_BASE = "https://api-v2.soundcloud.com";
     private static final int SEARCH_LIMIT = 20;
 
+    // Internal web-app client_id — required for api-v2.soundcloud.com.
+    // The OAuth app client_id is blocked on v2; this ID is used by SoundCloud's own web app.
+    private static final String WEB_CLIENT_ID = "gxPRNsEq7CDD7Wvem4iymWOq3YfU7KS8";
+    private static final String APP_VERSION   = "1776363554";
+
     private final Logger logger = LoggerFactory.getLogger(SoundCloudApiClient.class);
     private final Gson gson = new Gson();
     private final HttpClient httpClient;
-    private final String clientId;
     private @Nullable String oauthToken;
 
     public SoundCloudApiClient(String clientId, @Nullable String oauthToken) {
-        this.clientId = clientId;
         this.oauthToken = oauthToken;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -112,12 +115,12 @@ public class SoundCloudApiClient {
                 .uri(URI.create(fullUrl))
                 .timeout(Duration.ofSeconds(15))
                 .header("Accept", "application/json; charset=utf-8")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .header("Origin", "https://soundcloud.com")
                 .GET();
 
-        String token = oauthToken;
-        if (token != null && !token.isBlank()) {
-            builder.header("Authorization", "OAuth " + token);
-        }
+        // Sending the OAuth JWT alongside the web client_id causes a 403 on api-v2.
+        // The web client_id alone is sufficient for public endpoints (search, track info, stream).
 
         HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
 
@@ -128,7 +131,8 @@ public class SoundCloudApiClient {
     }
 
     private String appendClientId(String url) {
-        return url + (url.contains("?") ? "&" : "?") + "client_id=" + clientId;
+        String sep = url.contains("?") ? "&" : "?";
+        return url + sep + "client_id=" + WEB_CLIENT_ID + "&app_version=" + APP_VERSION;
     }
 
     private static String encode(String value) {

@@ -251,8 +251,8 @@ public class SoundCloudHandler extends BaseThingHandler {
                 for (SoundCloudTrack t : tracks) {
                     JsonObject o = new JsonObject();
                     o.addProperty("id", t.id);
-                    o.addProperty("title", t.title);
-                    o.addProperty("artist", t.user.username);
+                    o.addProperty("title", t.title != null ? t.title : "");
+                    o.addProperty("artist", t.user != null && t.user.username != null ? t.user.username : "");
                     o.addProperty("artwork", hqArtwork(t.artworkUrl));
                     o.addProperty("duration", t.duration / 1000);
                     arr.add(o);
@@ -327,8 +327,8 @@ public class SoundCloudHandler extends BaseThingHandler {
 
     private void applyTrackToChannels(SoundCloudTrack track, String streamUrl) {
         updateState(CHANNEL_TRACK_ID, new StringType(String.valueOf(track.id)));
-        updateState(CHANNEL_TITLE, new StringType(track.title));
-        updateState(CHANNEL_ARTIST, new StringType(track.user.username));
+        updateState(CHANNEL_TITLE, new StringType(track.title != null ? track.title : ""));
+        updateState(CHANNEL_ARTIST, new StringType(track.user != null && track.user.username != null ? track.user.username : ""));
         updateState(CHANNEL_ARTWORK_URL, new StringType(hqArtwork(track.artworkUrl)));
         updateState(CHANNEL_DURATION, new DecimalType(track.duration / 1000));
         updateState(CHANNEL_STREAM_URL, new StringType(streamUrl));
@@ -342,8 +342,8 @@ public class SoundCloudHandler extends BaseThingHandler {
         updateState(CHANNEL_PLAYBACK_STATE, new StringType(playbackState));
     }
 
-    private static String hqArtwork(String url) {
-        return url.isEmpty() ? "" : url.replace("-large.", "-t500x500.");
+    private static String hqArtwork(@Nullable String url) {
+        return (url == null || url.isEmpty()) ? "" : url.replace("-large.", "-t500x500.");
     }
 
     private static long parseLong(String value) {
