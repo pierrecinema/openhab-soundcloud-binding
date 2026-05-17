@@ -39,29 +39,49 @@ Search tracks, browse playlists, display cover art and stream audio to a Chromec
 
 ## Configuration
 
-### Thing (`.things` file)
+### 1. Thing — `conf/things/soundcloud.things`
+
+Create this file in your openHAB `conf/things/` directory:
 
 ```
 Thing soundcloud:account:myaccount "SoundCloud" [
-    clientId  = "YOUR_CLIENT_ID",
-    oauthToken = "YOUR_OAUTH_TOKEN"   // optional but recommended
+    clientId     = "YOUR_CLIENT_ID",
+    clientSecret = "YOUR_CLIENT_SECRET",
+    redirectUri  = "http://localhost",
+    oauthToken   = "YOUR_OAUTH_TOKEN"
 ]
 ```
 
-### Items (`.items` file)
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `clientId` | ✅ | Client ID from [soundcloud.com/you/apps](https://soundcloud.com/you/apps) |
+| `clientSecret` | ✅ | Client Secret from your registered app |
+| `redirectUri` | ✅ | Redirect URI registered in your app (e.g. `http://localhost`) |
+| `oauthToken` | optional | OAuth access token for stream URL resolution |
+
+### 2. Items — `conf/items/soundcloud.items`
+
+Create this file in your openHAB `conf/items/` directory:
 
 ```
-String   SC_TrackID       "Track ID"       { channel="soundcloud:account:myaccount:player#track-id" }
-String   SC_PlaylistID    "Playlist ID"    { channel="soundcloud:account:myaccount:player#playlist-id" }
-String   SC_Title         "Title"          { channel="soundcloud:account:myaccount:player#title" }
-String   SC_Artist        "Artist"         { channel="soundcloud:account:myaccount:player#artist" }
-String   SC_ArtworkURL    "Artwork URL"    { channel="soundcloud:account:myaccount:player#artwork-url" }
-Number   SC_Duration      "Duration [%d s]"{ channel="soundcloud:account:myaccount:player#duration" }
-String   SC_StreamURL     "Stream URL"     { channel="soundcloud:account:myaccount:player#stream-url" }
-String   SC_State         "State"          { channel="soundcloud:account:myaccount:player#playback-state" }
-String   SC_Query         "Search"         { channel="soundcloud:account:myaccount:search#query" }
-String   SC_Results       "Results"        { channel="soundcloud:account:myaccount:search#results" }
+Group gSoundCloud "SoundCloud" <music>
+
+// Player
+String   SC_TrackID       "Track ID"           (gSoundCloud) { channel="soundcloud:account:myaccount:player#track-id" }
+String   SC_PlaylistID    "Playlist ID"         (gSoundCloud) { channel="soundcloud:account:myaccount:player#playlist-id" }
+String   SC_Title         "Titel [%s]"          (gSoundCloud) { channel="soundcloud:account:myaccount:player#title" }
+String   SC_Artist        "Artist [%s]"         (gSoundCloud) { channel="soundcloud:account:myaccount:player#artist" }
+String   SC_ArtworkURL    "Cover URL [%s]"      (gSoundCloud) { channel="soundcloud:account:myaccount:player#artwork-url" }
+Number   SC_Duration      "Dauer [%d s]"        (gSoundCloud) { channel="soundcloud:account:myaccount:player#duration" }
+String   SC_StreamURL     "Stream URL [%s]"     (gSoundCloud) { channel="soundcloud:account:myaccount:player#stream-url" }
+String   SC_State         "Status [%s]"         (gSoundCloud) { channel="soundcloud:account:myaccount:player#playback-state" }
+
+// Suche
+String   SC_Query         "Suche [%s]"          (gSoundCloud) { channel="soundcloud:account:myaccount:search#query" }
+String   SC_Results       "Ergebnisse [%s]"     (gSoundCloud) { channel="soundcloud:account:myaccount:search#results" }
 ```
+
+openHAB picks up both files automatically — no restart needed.
 
 ---
 
