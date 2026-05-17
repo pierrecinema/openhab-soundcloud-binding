@@ -7,6 +7,10 @@ import org.eclipse.jdt.annotation.Nullable;
 public class SoundCloudConfiguration {
     /** SoundCloud API Client ID (required). */
     public String clientId = "";
-    /** OAuth access token (optional, extends API access). */
+    /** SoundCloud API Client Secret (required for OAuth flow). */
+    public String clientSecret = "";
+    /** OAuth redirect URI registered in your SoundCloud app (required for OAuth flow). */
+    public String redirectUri = "";
+    /** OAuth access token — filled automatically after auth or entered manually. */
     public @Nullable String oauthToken;
 }

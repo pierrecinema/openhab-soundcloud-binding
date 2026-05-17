@@ -19,11 +19,20 @@
         <config-description>
             <parameter name="clientId" type="text" required="true">
                 <label>Client ID</label>
-                <description>SoundCloud API Client ID obtained from your registered application</description>
+                <description>SoundCloud API Client ID from your registered application (soundcloud.com/you/apps)</description>
+            </parameter>
+            <parameter name="clientSecret" type="text" required="true">
+                <label>Client Secret</label>
+                <description>SoundCloud API Client Secret from your registered application</description>
+                <context>password</context>
+            </parameter>
+            <parameter name="redirectUri" type="text" required="true">
+                <label>Redirect URI</label>
+                <description>OAuth redirect URI registered in your SoundCloud app (e.g. http://localhost)</description>
             </parameter>
             <parameter name="oauthToken" type="text">
-                <label>OAuth Token</label>
-                <description>Optional OAuth access token for extended API access and stream URLs</description>
+                <label>OAuth Access Token</label>
+                <description>OAuth access token — enter manually or leave empty if not using OAuth</description>
                 <context>password</context>
             </parameter>
         </config-description>
