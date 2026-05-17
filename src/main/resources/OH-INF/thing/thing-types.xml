@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<thing:thing-descriptions bindingId="soundcloud"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:thing="https://openhab.org/schemas/thing-description/v1.0.0"
+    xsi:schemaLocation="https://openhab.org/schemas/thing-description/v1.0.0 https://openhab.org/schemas/thing-description-1.0.0.xsd">
+
+    <!-- ================================================================== -->
+    <!-- Thing                                                               -->
+    <!-- ================================================================== -->
+    <thing-type id="account">
+        <label>SoundCloud Account</label>
+        <description>Connection to the SoundCloud API for search and streaming</description>
+
+        <channel-groups>
+            <channel-group id="player" typeId="player"/>
+            <channel-group id="search" typeId="search"/>
+        </channel-groups>
+
+        <config-description>
+            <parameter name="clientId" type="text" required="true">
+                <label>Client ID</label>
+                <description>SoundCloud API Client ID obtained from your registered application</description>
+            </parameter>
+            <parameter name="oauthToken" type="text">
+                <label>OAuth Token</label>
+                <description>Optional OAuth access token for extended API access and stream URLs</description>
+                <context>password</context>
+            </parameter>
+        </config-description>
+    </thing-type>
+
+    <!-- ================================================================== -->
+    <!-- Channel groups                                                      -->
+    <!-- ================================================================== -->
+    <channel-group-type id="player">
+        <label>Player</label>
+        <description>Current track info and playback control</description>
+        <channels>
+            <channel id="track-id"       typeId="track-id"/>
+            <channel id="playlist-id"    typeId="playlist-id"/>
+            <channel id="title"          typeId="title"/>
+            <channel id="artist"         typeId="artist"/>
+            <channel id="artwork-url"    typeId="artwork-url"/>
+            <channel id="duration"       typeId="duration"/>
+            <channel id="stream-url"     typeId="stream-url"/>
+            <channel id="playback-state" typeId="playback-state"/>
+        </channels>
+    </channel-group-type>
+
+    <channel-group-type id="search">
+        <label>Search</label>
+        <description>SoundCloud track search</description>
+        <channels>
+            <channel id="query"   typeId="search-query"/>
+            <channel id="results" typeId="search-results"/>
+        </channels>
+    </channel-group-type>
+
+    <!-- ================================================================== -->
+    <!-- Channel types                                                       -->
+    <!-- ================================================================== -->
+    <channel-type id="track-id">
+        <item-type>String</item-type>
+        <label>Track ID</label>
+        <description>Write a SoundCloud track ID to load and stream it; reflects the currently loaded track ID</description>
+        <state pattern="%s"/>
+    </channel-type>
+
+    <channel-type id="playlist-id">
+        <item-type>String</item-type>
+        <label>Playlist ID</label>
+        <description>Write a SoundCloud playlist ID to load its first track</description>
+        <state pattern="%s"/>
+    </channel-type>
+
+    <channel-type id="title">
+        <item-type>String</item-type>
+        <label>Track Title</label>
+        <description>Title of the currently loaded track</description>
+        <state readOnly="true" pattern="%s"/>
+    </channel-type>
+
+    <channel-type id="artist">
+        <item-type>String</item-type>
+        <label>Artist</label>
+        <description>Artist / uploader of the currently loaded track</description>
+        <state readOnly="true" pattern="%s"/>
+    </channel-type>
+
+    <channel-type id="artwork-url">
+        <item-type>String</item-type>
+        <label>Artwork URL</label>
+        <description>500×500 px cover art URL — use in an Image item or widget</description>
+        <state readOnly="true" pattern="%s"/>
+    </channel-type>
+
+    <channel-type id="duration">
+        <item-type>Number</item-type>
+        <label>Duration</label>
+        <description>Track duration in seconds</description>
+        <state readOnly="true" pattern="%.0f s"/>
+    </channel-type>
+
+    <channel-type id="stream-url">
+        <item-type>String</item-type>
+        <label>Stream URL</label>
+        <description>
+            Direct MP3 stream URL. Use in a rule to send it to a Chromecast:
+            ChromeCast_MediaUri.sendCommand(SoundCloud_StreamURL.state.toString)
+        </description>
+        <state readOnly="true" pattern="%s"/>
+    </channel-type>
+
+    <channel-type id="playback-state">
+        <item-type>String</item-type>
+        <label>Playback State</label>
+        <description>Current state. Send PLAY, PAUSE or STOP as command.</description>
+        <state pattern="%s">
+            <options>
+                <option value="PLAYING">Playing</option>
+                <option value="PAUSED">Paused</option>
+                <option value="STOPPED">Stopped</option>
+            </options>
+        </state>
+        <command>
+            <options>
+                <option value="PLAY">Play</option>
+                <option value="PAUSE">Pause</option>
+                <option value="STOP">Stop</option>
+            </options>
+        </command>
+    </channel-type>
+
+    <channel-type id="search-query">
+        <item-type>String</item-type>
+        <label>Search Query</label>
+        <description>Send a search term to find tracks on SoundCloud (results appear in the Results channel)</description>
+        <state pattern="%s"/>
+    </channel-type>
+
+    <channel-type id="search-results">
+        <item-type>String</item-type>
+        <label>Search Results</label>
+        <description>
+            JSON array: [{id, title, artist, artwork, duration}, …] — use in a widget or rule to pick a track
+        </description>
+        <state readOnly="true" pattern="%s"/>
+    </channel-type>
+
+</thing:thing-descriptions>

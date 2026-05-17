@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<binding:binding id="soundcloud"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:binding="https://openhab.org/schemas/binding/v1.0.0"
+    xsi:schemaLocation="https://openhab.org/schemas/binding/v1.0.0 https://openhab.org/schemas/binding-1.0.0.xsd">
+
+    <name>SoundCloud Binding</name>
+    <description>
+        Integrates SoundCloud into openHAB. Supports track search, playlist browsing,
+        cover art and streaming via Chromecast or any openHAB audio sink.
+    </description>
+    <author>Community</author>
+</binding:binding>

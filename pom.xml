@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.openhab.binding</groupId>
+    <artifactId>org.openhab.binding.soundcloud</artifactId>
+    <version>0.1.0</version>
+    <packaging>bundle</packaging>
+
+    <name>openHAB SoundCloud Binding</name>
+    <description>SoundCloud integration for openHAB — search, browse playlists and stream via Chromecast</description>
+    <url>https://github.com/pierrecinema/openhab-soundcloud-binding</url>
+
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <openhab.version>4.3.0</openhab.version>
+    </properties>
+
+    <dependencies>
+        <!-- OSGi -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>osgi.core</artifactId>
+            <version>8.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.component.annotations</artifactId>
+            <version>1.5.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- openHAB Core -->
+        <dependency>
+            <groupId>org.openhab.core.bundles</groupId>
+            <artifactId>org.openhab.core</artifactId>
+            <version>${openhab.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openhab.core.bundles</groupId>
+            <artifactId>org.openhab.core.thing</artifactId>
+            <version>${openhab.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.openhab.core.bundles</groupId>
+            <artifactId>org.openhab.core.config.core</artifactId>
+            <version>${openhab.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Null-safety annotations -->
+        <dependency>
+            <groupId>org.eclipse.jdt</groupId>
+            <artifactId>org.eclipse.jdt.annotation</artifactId>
+            <version>2.2.700</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- SLF4J -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.12</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Gson — embedded in the bundle so no runtime dependency needed -->
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.felix</groupId>
+                <artifactId>maven-bundle-plugin</artifactId>
+                <version>5.1.9</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <instructions>
+                        <Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
+                        <Bundle-Name>SoundCloud Binding</Bundle-Name>
+                        <Bundle-Version>${project.version}</Bundle-Version>
+                        <Bundle-Description>${project.description}</Bundle-Description>
+                        <Bundle-Vendor>Community</Bundle-Vendor>
+                        <!-- Embed Gson so it doesn't need to be exported by the runtime -->
+                        <Embed-Dependency>gson</Embed-Dependency>
+                        <Embed-Transitive>true</Embed-Transitive>
+                        <Export-Package>
+                            org.openhab.binding.soundcloud
+                        </Export-Package>
+                        <Import-Package>
+                            org.openhab.core.*;version="[4.0,5)",
+                            org.osgi.*;version="[1.0,2)",
+                            org.slf4j.*;version="[1.7,3)",
+                            *;resolution:=optional
+                        </Import-Package>
+                        <!-- Process OSGi DS annotations to generate component descriptors -->
+                        <_dsannotations>*</_dsannotations>
+                    </instructions>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>
