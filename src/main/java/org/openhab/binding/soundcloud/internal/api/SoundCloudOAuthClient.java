@@ -19,8 +19,8 @@ import com.google.gson.Gson;
 @NonNullByDefault
 public class SoundCloudOAuthClient {
 
-    private static final String AUTH_URL   = "https://soundcloud.com/connect";
-    private static final String TOKEN_URL  = "https://api.soundcloud.com/oauth2/token";
+    private static final String AUTH_URL   = "https://secure.soundcloud.com/authorize";
+    private static final String TOKEN_URL  = "https://secure.soundcloud.com/oauth/token";
 
     private final Logger logger = LoggerFactory.getLogger(SoundCloudOAuthClient.class);
     private final Gson gson = new Gson();
@@ -34,7 +34,7 @@ public class SoundCloudOAuthClient {
                 + "?client_id="    + encode(clientId)
                 + "&redirect_uri=" + encode(redirectUri)
                 + "&response_type=code"
-                + "&scope=*";
+                + "&scope=non-expiring";
     }
 
     /** Exchanges a one-time authorization code for access + refresh tokens. */

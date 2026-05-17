@@ -137,6 +137,8 @@ public class SoundCloudHandler extends BaseThingHandler {
             scheduleTokenRefresh(config, tokens.expiresIn);
             logger.info("SoundCloud erfolgreich autorisiert");
         } catch (Exception e) {
+            logger.warn("Token-Austausch fehlgeschlagen: {}", e.getMessage());
+            registerServlet(config);
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     "Token-Austausch fehlgeschlagen: " + e.getMessage());
         }
