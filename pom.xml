@@ -6,7 +6,7 @@
 
     <groupId>org.openhab.binding</groupId>
     <artifactId>org.openhab.binding.soundcloud</artifactId>
-    <version>0.1.6</version>
+    <version>0.1.7</version>
     <packaging>bundle</packaging>
 
     <name>openHAB SoundCloud Binding</name>
@@ -124,6 +124,7 @@
                             org.openhab.core.*;version="[4.0,6)",
                             org.osgi.*;version="[1.0,2)",
                             org.slf4j.*;version="[1.7,3)",
+                            com.sun.net.httpserver;resolution:=optional,
                             *;resolution:=optional
                         </Import-Package>
                         <!-- Process OSGi DS annotations to generate component descriptors -->

@@ -28,16 +28,13 @@
             </parameter>
             <parameter name="redirectUri" type="text" required="true">
                 <label>Redirect URI</label>
-                <description>OAuth Redirect URI registered in your SoundCloud app (e.g. http://localhost)</description>
+                <description>OAuth Redirect URI registered in your SoundCloud app — must match exactly</description>
             </parameter>
-            <parameter name="authorizationCode" type="text">
-                <label>Authorization Code</label>
-                <description>
-                    First-time setup only: paste the "code" parameter from the redirect URL after authorizing in the browser.
-                    Check the openHAB log for the authorization URL if the thing goes OFFLINE.
-                    After the first successful login this field is no longer needed.
-                </description>
-                <context>password</context>
+            <parameter name="callbackPort" type="integer">
+                <label>Callback Port</label>
+                <description>Port the binding listens on for the OAuth callback (default: 8000)</description>
+                <default>8000</default>
+                <advanced>true</advanced>
             </parameter>
         </config-description>
     </thing-type>

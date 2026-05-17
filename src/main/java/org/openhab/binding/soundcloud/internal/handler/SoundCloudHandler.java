@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.soundcloud.internal.SoundCloudCallbackServer;
 import org.openhab.binding.soundcloud.internal.api.SoundCloudApiClient;
 import org.openhab.binding.soundcloud.internal.api.SoundCloudOAuthClient;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudPlaylist;
@@ -42,6 +43,7 @@ public class SoundCloudHandler extends BaseThingHandler {
     private final Storage<String> storage;
 
     private @Nullable SoundCloudApiClient apiClient;
+    private @Nullable SoundCloudCallbackServer callbackServer;
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
     private @Nullable ScheduledFuture<?> tokenRefreshJob;
@@ -71,41 +73,52 @@ public class SoundCloudHandler extends BaseThingHandler {
     }
 
     private void initOAuth(SoundCloudConfiguration config) {
-        // 1. Try stored tokens from a previous run
+        // 1. Stored tokens from a previous run → use them directly
         String storedAccess  = storage.get(STORAGE_ACCESS_TOKEN);
         String storedRefresh = storage.get(STORAGE_REFRESH_TOKEN);
 
         if (storedAccess != null && !storedAccess.isBlank()) {
-            logger.debug("Using stored OAuth access token");
+            logger.debug("Gespeicherten OAuth-Token verwenden");
             startWithToken(config, storedAccess, storedRefresh);
             return;
         }
 
-        // 2. Try authorization code from config (first-time setup)
-        String code = config.authorizationCode;
-        if (code != null && !code.isBlank()) {
-            logger.debug("Exchanging authorization code for tokens");
-            try {
-                SoundCloudTokenResponse tokens = oauthClient.exchangeCode(
-                        config.clientId, config.clientSecret, config.redirectUri, code);
-                storage.put(STORAGE_ACCESS_TOKEN,  tokens.accessToken);
-                storage.put(STORAGE_REFRESH_TOKEN, tokens.refreshToken);
-                startWithToken(config, tokens.accessToken, tokens.refreshToken);
-                scheduleTokenRefresh(config, tokens.expiresIn);
-            } catch (Exception e) {
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-                        "Code ungültig oder abgelaufen: " + e.getMessage());
-            }
-            return;
-        }
+        // 2. No tokens yet → start callback server, show auth URL
+        startCallbackServer(config);
+    }
 
-        // 3. No tokens yet — show authorization URL
-        String authUrl = oauthClient.buildAuthorizationUrl(config.clientId, config.redirectUri);
-        logger.info("SoundCloud nicht autorisiert. Öffne diese URL im Browser: {}", authUrl);
-        updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-                "Nicht autorisiert. Öffne diese URL im Browser, melde dich an, "
-                + "kopiere dann den 'code' Parameter aus der Redirect-URL und trage ihn "
-                + "als 'Authorization Code' in der Thing-Konfiguration ein. URL: " + authUrl);
+    private void startCallbackServer(SoundCloudConfiguration config) {
+        try {
+            SoundCloudCallbackServer server = new SoundCloudCallbackServer(
+                    config.callbackPort, code -> onCodeReceived(config, code));
+            server.start();
+            callbackServer = server;
+
+            String authUrl = oauthClient.buildAuthorizationUrl(config.clientId, config.redirectUri);
+            logger.info("SoundCloud Autorisierung erforderlich — öffne diesen Link im Browser: {}", authUrl);
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                    "Nicht autorisiert. Öffne diesen Link im Browser und melde dich an: " + authUrl);
+        } catch (Exception e) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                    "Callback-Server konnte nicht gestartet werden (Port " + config.callbackPort + "): " + e.getMessage());
+        }
+    }
+
+    private void onCodeReceived(SoundCloudConfiguration config, String code) {
+        stopCallbackServer();
+        try {
+            SoundCloudTokenResponse tokens = oauthClient.exchangeCode(
+                    config.clientId, config.clientSecret, config.redirectUri, code);
+            storage.put(STORAGE_ACCESS_TOKEN,  tokens.accessToken);
+            storage.put(STORAGE_REFRESH_TOKEN, tokens.refreshToken);
+            apiClient = new SoundCloudApiClient(config.clientId, tokens.accessToken);
+            updateStatus(ThingStatus.ONLINE);
+            scheduleTokenRefresh(config, tokens.expiresIn);
+            logger.info("SoundCloud erfolgreich autorisiert — Token gespeichert");
+        } catch (Exception e) {
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                    "Token-Austausch fehlgeschlagen: " + e.getMessage());
+        }
     }
 
     private void startWithToken(SoundCloudConfiguration config, String accessToken,
@@ -116,18 +129,16 @@ public class SoundCloudHandler extends BaseThingHandler {
             client.searchTracks("test");
             updateStatus(ThingStatus.ONLINE);
             if (refreshToken != null && !refreshToken.isBlank()) {
-                scheduleTokenRefresh(config, 3540); // refresh after ~59 min by default
+                scheduleTokenRefresh(config, 3540);
             }
         } catch (Exception e) {
-            // Token might be expired — try refresh
             if (refreshToken != null && !refreshToken.isBlank()) {
-                logger.debug("Access token rejected, attempting refresh");
+                logger.debug("Token abgelehnt — versuche Refresh");
                 refreshAccessToken(config, refreshToken);
             } else {
                 storage.remove(STORAGE_ACCESS_TOKEN);
                 storage.remove(STORAGE_REFRESH_TOKEN);
-                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                        "Token abgelaufen und kein Refresh-Token vorhanden. Bitte neu autorisieren.");
+                startCallbackServer(config);
             }
         }
     }
@@ -161,23 +172,33 @@ public class SoundCloudHandler extends BaseThingHandler {
             }
             updateStatus(ThingStatus.ONLINE);
             scheduleTokenRefresh(config, tokens.expiresIn);
-            logger.info("OAuth Token erfolgreich erneuert");
+            logger.info("OAuth-Token erfolgreich erneuert");
         } catch (Exception e) {
             storage.remove(STORAGE_ACCESS_TOKEN);
             storage.remove(STORAGE_REFRESH_TOKEN);
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     "Token-Refresh fehlgeschlagen: " + e.getMessage());
+            startCallbackServer(config);
         }
     }
 
     @Override
     public void dispose() {
+        stopCallbackServer();
         ScheduledFuture<?> job = tokenRefreshJob;
         if (job != null) {
             job.cancel(true);
             tokenRefreshJob = null;
         }
         apiClient = null;
+    }
+
+    private void stopCallbackServer() {
+        SoundCloudCallbackServer server = callbackServer;
+        if (server != null) {
+            server.stop();
+            callbackServer = null;
+        }
     }
 
     // -------------------------------------------------------------------------
