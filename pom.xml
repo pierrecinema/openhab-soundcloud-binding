@@ -6,7 +6,7 @@
 
     <groupId>org.openhab.binding</groupId>
     <artifactId>org.openhab.binding.soundcloud</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
     <packaging>bundle</packaging>
 
     <name>openHAB SoundCloud Binding</name>
@@ -17,7 +17,9 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <openhab.version>5.1.3</openhab.version>
+        <!-- Compile against 4.3.0 (available on Maven Central, API-compatible).
+             Runtime minimum is openHAB 5.1.3 — enforced via Import-Package range. -->
+        <openhab.version>4.3.0</openhab.version>
     </properties>
 
     <dependencies>
@@ -109,7 +111,7 @@
                             org.openhab.binding.soundcloud
                         </Export-Package>
                         <Import-Package>
-                            org.openhab.core.*;version="[4.0,5)",
+                            org.openhab.core.*;version="[4.0,6)",
                             org.osgi.*;version="[1.0,2)",
                             org.slf4j.*;version="[1.7,3)",
                             *;resolution:=optional
