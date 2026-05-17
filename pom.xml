@@ -6,7 +6,7 @@
 
     <groupId>org.openhab.binding</groupId>
     <artifactId>org.openhab.binding.soundcloud</artifactId>
-    <version>0.1.7</version>
+    <version>0.1.8</version>
     <packaging>bundle</packaging>
 
     <name>openHAB SoundCloud Binding</name>
@@ -91,6 +91,21 @@
             <scope>compile</scope>
         </dependency>
 
+        <!-- Servlet API (provided by openHAB/OSGi runtime) -->
+        <dependency>
+            <groupId>javax.servlet</groupId>
+            <artifactId>javax.servlet-api</artifactId>
+            <version>3.1.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <!-- OSGi HTTP Service -->
+        <dependency>
+            <groupId>org.osgi</groupId>
+            <artifactId>org.osgi.service.http</artifactId>
+            <version>1.2.1</version>
+            <scope>provided</scope>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -124,7 +139,8 @@
                             org.openhab.core.*;version="[4.0,6)",
                             org.osgi.*;version="[1.0,2)",
                             org.slf4j.*;version="[1.7,3)",
-                            com.sun.net.httpserver;resolution:=optional,
+                            javax.servlet.*;version="[3.1,5)",
+                            org.osgi.service.http.*,
                             *;resolution:=optional
                         </Import-Package>
                         <!-- Process OSGi DS annotations to generate component descriptors -->

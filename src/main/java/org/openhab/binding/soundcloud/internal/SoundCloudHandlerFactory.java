@@ -16,6 +16,7 @@ import org.openhab.core.thing.binding.ThingHandlerFactory;
 import org.osgi.service.component.annotations.Activate;
 import org.osgi.service.component.annotations.Component;
 import org.osgi.service.component.annotations.Reference;
+import org.osgi.service.http.HttpService;
 
 @Component(service = ThingHandlerFactory.class)
 @NonNullByDefault
@@ -24,10 +25,13 @@ public class SoundCloudHandlerFactory extends BaseThingHandlerFactory {
     private static final Set<ThingTypeUID> SUPPORTED_THING_TYPES = Set.of(THING_TYPE_ACCOUNT);
 
     private final StorageService storageService;
+    private final HttpService httpService;
 
     @Activate
-    public SoundCloudHandlerFactory(@Reference StorageService storageService) {
+    public SoundCloudHandlerFactory(@Reference StorageService storageService,
+            @Reference HttpService httpService) {
         this.storageService = storageService;
+        this.httpService = httpService;
     }
 
     @Override
@@ -38,7 +42,7 @@ public class SoundCloudHandlerFactory extends BaseThingHandlerFactory {
     @Override
     protected @Nullable ThingHandler createHandler(Thing thing) {
         if (THING_TYPE_ACCOUNT.equals(thing.getThingTypeUID())) {
-            return new SoundCloudHandler(thing, storageService);
+            return new SoundCloudHandler(thing, storageService, httpService);
         }
         return null;
     }

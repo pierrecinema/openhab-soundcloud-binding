@@ -10,6 +10,4 @@ public class SoundCloudConfiguration {
     public String clientSecret = "";
     /** OAuth Redirect URI registered in your SoundCloud app (required). */
     public String redirectUri = "";
-    /** Port the built-in OAuth callback server listens on (default: 8000). */
-    public int callbackPort = 8000;
 }

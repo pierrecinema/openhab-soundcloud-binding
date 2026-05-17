@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
-import org.openhab.binding.soundcloud.internal.SoundCloudCallbackServer;
+import org.openhab.binding.soundcloud.internal.SoundCloudCallbackServlet;
 import org.openhab.binding.soundcloud.internal.api.SoundCloudApiClient;
 import org.openhab.binding.soundcloud.internal.api.SoundCloudOAuthClient;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudPlaylist;
@@ -26,6 +26,8 @@ import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.RefreshType;
+import org.osgi.service.http.HttpService;
+import org.osgi.service.http.NamespaceException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,23 +37,26 @@ import com.google.gson.JsonObject;
 @NonNullByDefault
 public class SoundCloudHandler extends BaseThingHandler {
 
-    private static final String STORAGE_ACCESS_TOKEN  = "access_token";
-    private static final String STORAGE_REFRESH_TOKEN = "refresh_token";
+    private static final String CALLBACK_PATH     = "/soundcloud/callback";
+    private static final String STORAGE_ACCESS    = "access_token";
+    private static final String STORAGE_REFRESH   = "refresh_token";
 
     private final Logger logger = LoggerFactory.getLogger(SoundCloudHandler.class);
     private final SoundCloudOAuthClient oauthClient = new SoundCloudOAuthClient();
     private final Storage<String> storage;
+    private final HttpService httpService;
 
     private @Nullable SoundCloudApiClient apiClient;
-    private @Nullable SoundCloudCallbackServer callbackServer;
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
     private @Nullable ScheduledFuture<?> tokenRefreshJob;
+    private boolean servletRegistered = false;
     private String playbackState = "STOPPED";
 
-    public SoundCloudHandler(Thing thing, StorageService storageService) {
+    public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService) {
         super(thing);
         this.storage = storageService.getStorage(thing.getUID().toString());
+        this.httpService = httpService;
     }
 
     // -------------------------------------------------------------------------
@@ -73,9 +78,8 @@ public class SoundCloudHandler extends BaseThingHandler {
     }
 
     private void initOAuth(SoundCloudConfiguration config) {
-        // 1. Stored tokens from a previous run → use them directly
-        String storedAccess  = storage.get(STORAGE_ACCESS_TOKEN);
-        String storedRefresh = storage.get(STORAGE_REFRESH_TOKEN);
+        String storedAccess  = storage.get(STORAGE_ACCESS);
+        String storedRefresh = storage.get(STORAGE_REFRESH);
 
         if (storedAccess != null && !storedAccess.isBlank()) {
             logger.debug("Gespeicherten OAuth-Token verwenden");
@@ -83,38 +87,55 @@ public class SoundCloudHandler extends BaseThingHandler {
             return;
         }
 
-        // 2. No tokens yet → start callback server, show auth URL
-        startCallbackServer(config);
+        // No tokens — register servlet and show auth URL
+        registerServlet(config);
     }
 
-    private void startCallbackServer(SoundCloudConfiguration config) {
+    private void registerServlet(SoundCloudConfiguration config) {
+        if (servletRegistered) return;
         try {
-            SoundCloudCallbackServer server = new SoundCloudCallbackServer(
-                    config.callbackPort, code -> onCodeReceived(config, code));
-            server.start();
-            callbackServer = server;
-
+            httpService.registerServlet(CALLBACK_PATH,
+                    new SoundCloudCallbackServlet(code -> onCodeReceived(config, code)),
+                    null, null);
+            servletRegistered = true;
             String authUrl = oauthClient.buildAuthorizationUrl(config.clientId, config.redirectUri);
-            logger.info("SoundCloud Autorisierung erforderlich — öffne diesen Link im Browser: {}", authUrl);
+            logger.info("SoundCloud Autorisierung erforderlich — öffne im Browser: {}", authUrl);
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
-                    "Nicht autorisiert. Öffne diesen Link im Browser und melde dich an: " + authUrl);
+                    "Nicht autorisiert. Öffne im Browser: " + authUrl);
+        } catch (NamespaceException e) {
+            // Servlet already registered (e.g. from a previous init) — just show URL
+            servletRegistered = true;
+            String authUrl = oauthClient.buildAuthorizationUrl(config.clientId, config.redirectUri);
+            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.CONFIGURATION_ERROR,
+                    "Nicht autorisiert. Öffne im Browser: " + authUrl);
         } catch (Exception e) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                    "Callback-Server konnte nicht gestartet werden (Port " + config.callbackPort + "): " + e.getMessage());
+                    "Servlet-Registrierung fehlgeschlagen: " + e.getMessage());
+        }
+    }
+
+    private void unregisterServlet() {
+        if (servletRegistered) {
+            try {
+                httpService.unregister(CALLBACK_PATH);
+            } catch (Exception e) {
+                logger.debug("Servlet-Deregistrierung: {}", e.getMessage());
+            }
+            servletRegistered = false;
         }
     }
 
     private void onCodeReceived(SoundCloudConfiguration config, String code) {
-        stopCallbackServer();
+        unregisterServlet();
         try {
             SoundCloudTokenResponse tokens = oauthClient.exchangeCode(
                     config.clientId, config.clientSecret, config.redirectUri, code);
-            storage.put(STORAGE_ACCESS_TOKEN,  tokens.accessToken);
-            storage.put(STORAGE_REFRESH_TOKEN, tokens.refreshToken);
+            storage.put(STORAGE_ACCESS,  tokens.accessToken);
+            storage.put(STORAGE_REFRESH, tokens.refreshToken);
             apiClient = new SoundCloudApiClient(config.clientId, tokens.accessToken);
             updateStatus(ThingStatus.ONLINE);
             scheduleTokenRefresh(config, tokens.expiresIn);
-            logger.info("SoundCloud erfolgreich autorisiert — Token gespeichert");
+            logger.info("SoundCloud erfolgreich autorisiert");
         } catch (Exception e) {
             updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
                     "Token-Austausch fehlgeschlagen: " + e.getMessage());
@@ -136,34 +157,29 @@ public class SoundCloudHandler extends BaseThingHandler {
                 logger.debug("Token abgelehnt — versuche Refresh");
                 refreshAccessToken(config, refreshToken);
             } else {
-                storage.remove(STORAGE_ACCESS_TOKEN);
-                storage.remove(STORAGE_REFRESH_TOKEN);
-                startCallbackServer(config);
+                storage.remove(STORAGE_ACCESS);
+                storage.remove(STORAGE_REFRESH);
+                registerServlet(config);
             }
         }
     }
 
     private void scheduleTokenRefresh(SoundCloudConfiguration config, long expiresIn) {
         ScheduledFuture<?> existing = tokenRefreshJob;
-        if (existing != null) {
-            existing.cancel(false);
-        }
+        if (existing != null) existing.cancel(false);
         long delay = Math.max(expiresIn - 60, 60);
         tokenRefreshJob = scheduler.schedule(() -> {
-            String stored = storage.get(STORAGE_REFRESH_TOKEN);
-            if (stored != null) {
-                refreshAccessToken(config, stored);
-            }
+            String stored = storage.get(STORAGE_REFRESH);
+            if (stored != null) refreshAccessToken(config, stored);
         }, delay, TimeUnit.SECONDS);
-        logger.debug("Token-Refresh geplant in {} Sekunden", delay);
     }
 
     private void refreshAccessToken(SoundCloudConfiguration config, String refreshToken) {
         try {
             SoundCloudTokenResponse tokens = oauthClient.refreshToken(
                     config.clientId, config.clientSecret, config.redirectUri, refreshToken);
-            storage.put(STORAGE_ACCESS_TOKEN,  tokens.accessToken);
-            storage.put(STORAGE_REFRESH_TOKEN, tokens.refreshToken);
+            storage.put(STORAGE_ACCESS,  tokens.accessToken);
+            storage.put(STORAGE_REFRESH, tokens.refreshToken);
             SoundCloudApiClient client = apiClient;
             if (client != null) {
                 client.setOauthToken(tokens.accessToken);
@@ -174,31 +190,21 @@ public class SoundCloudHandler extends BaseThingHandler {
             scheduleTokenRefresh(config, tokens.expiresIn);
             logger.info("OAuth-Token erfolgreich erneuert");
         } catch (Exception e) {
-            storage.remove(STORAGE_ACCESS_TOKEN);
-            storage.remove(STORAGE_REFRESH_TOKEN);
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                    "Token-Refresh fehlgeschlagen: " + e.getMessage());
-            startCallbackServer(config);
+            storage.remove(STORAGE_ACCESS);
+            storage.remove(STORAGE_REFRESH);
+            registerServlet(config);
         }
     }
 
     @Override
     public void dispose() {
-        stopCallbackServer();
+        unregisterServlet();
         ScheduledFuture<?> job = tokenRefreshJob;
         if (job != null) {
             job.cancel(true);
             tokenRefreshJob = null;
         }
         apiClient = null;
-    }
-
-    private void stopCallbackServer() {
-        SoundCloudCallbackServer server = callbackServer;
-        if (server != null) {
-            server.stop();
-            callbackServer = null;
-        }
     }
 
     // -------------------------------------------------------------------------
@@ -250,7 +256,6 @@ public class SoundCloudHandler extends BaseThingHandler {
                     arr.add(o);
                 }
                 updateState(CHANNEL_SEARCH_RESULTS, new StringType(arr.toString()));
-                logger.debug("Suche '{}' → {} Ergebnisse", query, tracks.size());
             } catch (Exception e) {
                 logger.warn("Suche fehlgeschlagen: {}", e.getMessage());
             }
@@ -265,10 +270,7 @@ public class SoundCloudHandler extends BaseThingHandler {
             try {
                 SoundCloudTrack track = client.getTrack(trackId);
                 String streamUrl = client.getStreamUrl(track);
-                if (streamUrl == null) {
-                    logger.warn("Kein Stream-URL für Track {}", trackId);
-                    return;
-                }
+                if (streamUrl == null) return;
                 currentTrack = track;
                 currentStreamUrl = streamUrl;
                 playbackState = "PLAYING";
@@ -286,9 +288,7 @@ public class SoundCloudHandler extends BaseThingHandler {
         scheduler.submit(() -> {
             try {
                 SoundCloudPlaylist playlist = client.getPlaylist(playlistId);
-                if (!playlist.tracks.isEmpty()) {
-                    loadTrack(playlist.tracks.get(0).id);
-                }
+                if (!playlist.tracks.isEmpty()) loadTrack(playlist.tracks.get(0).id);
             } catch (Exception e) {
                 logger.warn("Playlist {} konnte nicht geladen werden: {}", playlistId, e.getMessage());
             }
@@ -336,15 +336,12 @@ public class SoundCloudHandler extends BaseThingHandler {
     private void refreshChannels() {
         SoundCloudTrack track = currentTrack;
         String streamUrl = currentStreamUrl;
-        if (track != null && streamUrl != null) {
-            applyTrackToChannels(track, streamUrl);
-        }
+        if (track != null && streamUrl != null) applyTrackToChannels(track, streamUrl);
         updateState(CHANNEL_PLAYBACK_STATE, new StringType(playbackState));
     }
 
     private static String hqArtwork(String url) {
-        if (url.isEmpty()) return "";
-        return url.replace("-large.", "-t500x500.");
+        return url.isEmpty() ? "" : url.replace("-large.", "-t500x500.");
     }
 
     private static long parseLong(String value) {

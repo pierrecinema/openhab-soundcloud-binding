@@ -30,12 +30,6 @@
                 <label>Redirect URI</label>
                 <description>OAuth Redirect URI registered in your SoundCloud app — must match exactly</description>
             </parameter>
-            <parameter name="callbackPort" type="integer">
-                <label>Callback Port</label>
-                <description>Port the binding listens on for the OAuth callback (default: 8000)</description>
-                <default>8000</default>
-                <advanced>true</advanced>
-            </parameter>
         </config-description>
     </thing-type>
 
