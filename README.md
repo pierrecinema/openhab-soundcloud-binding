@@ -20,8 +20,8 @@ Search tracks, browse playlists, display cover art and stream audio to a Chromec
 
 | Requirement | Notes |
 |-------------|-------|
-| openHAB 4.x | |
-| Java 17+ | bundled with openHAB 4.x |
+| openHAB **5.1.3 or newer** | older versions are not supported |
+| Java 21+ | bundled with openHAB 5.x |
 | SoundCloud API key | apply at [soundcloud.com/you/apps](https://soundcloud.com/you/apps) — free for personal/home use |
 
 ---
