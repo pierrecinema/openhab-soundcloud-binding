@@ -1,0 +1,209 @@
+uid: soundcloud_search
+tags:
+  - soundcloud
+  - music
+props:
+  parameters:
+    - name: queryItem
+      label: Search Query Item
+      description: String Item linked to soundcloud:account:...:search#query
+      type: TEXT
+      required: true
+      context: item
+    - name: resultsItem
+      label: Search Results Item
+      description: String Item linked to soundcloud:account:...:search#results
+      type: TEXT
+      required: true
+      context: item
+    - name: trackIdItem
+      label: Track ID Item
+      description: String Item linked to soundcloud:account:...:player#track-id
+      type: TEXT
+      required: true
+      context: item
+    - name: titleItem
+      label: Title Item
+      description: String Item linked to soundcloud:account:...:player#title
+      type: TEXT
+      required: false
+      context: item
+    - name: artistItem
+      label: Artist Item
+      description: String Item linked to soundcloud:account:...:player#artist
+      type: TEXT
+      required: false
+      context: item
+    - name: artworkItem
+      label: Artwork URL Item
+      description: String Item linked to soundcloud:account:...:player#artwork-url
+      type: TEXT
+      required: false
+      context: item
+    - name: stateItem
+      label: Playback State Item
+      description: String Item linked to soundcloud:account:...:player#playback-state
+      type: TEXT
+      required: false
+      context: item
+timestamp: 2026-05-18T00:00:00Z
+component: f7-card
+config: {}
+slots:
+  default:
+    # ── Search input ──────────────────────────────────────────────────────────
+    - component: f7-card-header
+      config:
+        style:
+          background: "#ff5500"
+          color: white
+          padding: 12px 16px
+      slots:
+        default:
+          - component: f7-row
+            slots:
+              default:
+                - component: f7-col
+                  config:
+                    width: 80
+                  slots:
+                    default:
+                      - component: oh-input
+                        config:
+                          item: "=props.queryItem"
+                          placeholder: Künstler oder Titel suchen...
+                          clearButton: true
+                          style:
+                            color: white
+                            "--f7-input-placeholder-color": "rgba(255,255,255,0.6)"
+                - component: f7-col
+                  config:
+                    width: 20
+                  slots:
+                    default:
+                      - component: f7-button
+                        config:
+                          iconF7: search
+                          style:
+                            color: white
+                          action: command
+                          actionItem: "=props.queryItem"
+                          actionCommand: "=items[props.queryItem].state"
+
+    # ── Results list ──────────────────────────────────────────────────────────
+    - component: f7-card-content
+      config:
+        style:
+          padding: 0
+      slots:
+        default:
+          - component: oh-repeater
+            config:
+              for: track
+              sourceType: expression
+              expression: >-
+                =(function(){
+                  try {
+                    var s = items[props.resultsItem].state;
+                    return (s && s !== '-' && s.startsWith('[')) ? JSON.parse(s) : [];
+                  } catch(e) { return []; }
+                })()
+            slots:
+              default:
+                - component: f7-list
+                  config:
+                    mediaList: true
+                    style:
+                      margin: 0
+                  slots:
+                    default:
+                      - component: f7-list-item
+                        config:
+                          title: "=loop.track.title"
+                          subtitle: "=loop.track.artist"
+                          after: "=(function(){ var m=Math.floor(loop.track.duration/60); var s=loop.track.duration%60; return m+':'+(s<10?'0':'')+s; })()"
+                          mediaItem: true
+                          chevronCenter: false
+                          action: command
+                          actionItem: "=props.trackIdItem"
+                          actionCommand: "=String(loop.track.id)"
+                        slots:
+                          media:
+                            - component: f7-photo-browser
+                              config: {}
+                            - component: oh-image
+                              config:
+                                url: "=loop.track.artwork"
+                                style:
+                                  width: 56px
+                                  height: 56px
+                                  borderRadius: 6px
+                                  objectFit: cover
+
+    # ── Now playing ───────────────────────────────────────────────────────────
+    - component: f7-card-footer
+      config:
+        style:
+          padding: 8px 16px
+          borderTop: "1px solid var(--f7-card-border-color)"
+      slots:
+        default:
+          - component: f7-row
+            config:
+              style:
+                alignItems: center
+                gap: 12px
+            slots:
+              default:
+                - component: oh-image
+                  config:
+                    item: "=props.artworkItem"
+                    style:
+                      width: 44px
+                      height: 44px
+                      borderRadius: 4px
+                      objectFit: cover
+                      flexShrink: "0"
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: oh-label
+                        config:
+                          item: "=props.titleItem"
+                          style:
+                            fontWeight: "600"
+                            fontSize: 13px
+                      - component: oh-label
+                        config:
+                          item: "=props.artistItem"
+                          style:
+                            color: var(--f7-list-item-footer-text-color)
+                            fontSize: 12px
+                - component: f7-row
+                  config:
+                    style:
+                      gap: 6px
+                      marginLeft: auto
+                  slots:
+                    default:
+                      - component: f7-button
+                        config:
+                          iconF7: play_fill
+                          color: green
+                          action: command
+                          actionItem: "=props.stateItem"
+                          actionCommand: PLAY
+                      - component: f7-button
+                        config:
+                          iconF7: pause_fill
+                          color: orange
+                          action: command
+                          actionItem: "=props.stateItem"
+                          actionCommand: PAUSE
+                      - component: f7-button
+                        config:
+                          iconF7: stop_fill
+                          color: red
+                          action: command
+                          actionItem: "=props.stateItem"
+                          actionCommand: STOP
