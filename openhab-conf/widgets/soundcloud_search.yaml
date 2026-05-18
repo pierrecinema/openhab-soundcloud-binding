@@ -50,7 +50,7 @@ props:
       context: item
     - name: chromecastTag
       label: Chromecast Item Tag
-      description: Tag on your Chromecast playuri items (default: Chromecast)
+      description: "Tag on your Chromecast playuri items (default: Chromecast)"
       type: TEXT
       required: false
 timestamp: 2026-05-19T00:00:00Z
