@@ -117,22 +117,19 @@ slots:
           padding: 0
       slots:
         default:
-          - component: oh-repeater
+          - component: f7-list
             config:
-              for: track
-              sourceType: expression
-              expression: >-
-                =(items[props.resultsItem] && items[props.resultsItem].state && items[props.resultsItem].state.startsWith('['))
-                  ? JSON.parse(items[props.resultsItem].state)
-                  : []
+              mediaList: true
+              noHairlines: true
+              style:
+                margin: 0
             slots:
               default:
-                - component: f7-list
+                - component: oh-repeater
                   config:
-                    mediaList: true
-                    noHairlines: true
-                    style:
-                      margin: 0
+                    for: track
+                    sourceType: expression
+                    expression: "=(function(){var s=items[props.resultsItem]&&items[props.resultsItem].state;return s&&s[0]==='['?JSON.parse(s):[];})()"
                   slots:
                     default:
                       - component: f7-list-item
