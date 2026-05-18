@@ -48,12 +48,11 @@ props:
       type: TEXT
       required: false
       context: item
-    - name: chromecastGroupItem
-      label: Chromecast Group Item
-      description: Group Item containing all Chromecast playuri items (one per Chromecast)
+    - name: chromecastTag
+      label: Chromecast Item Tag
+      description: Tag on your Chromecast playuri items (default: Chromecast)
       type: TEXT
       required: false
-      context: item
 timestamp: 2026-05-19T00:00:00Z
 component: f7-card
 config:
@@ -62,7 +61,7 @@ config:
 slots:
   default:
 
-    # ── Orange Header ────────────────────────────────────────────────────────
+    # ── Orange Header ─────────────────────────────────────────────────────────
     - component: f7-card-header
       config:
         style:
@@ -93,7 +92,7 @@ slots:
                       margin: 0
                     text: SoundCloud
 
-    # ── Suchfeld ─────────────────────────────────────────────────────────────
+    # ── Suchfeld ──────────────────────────────────────────────────────────────
     - component: f7-card-content
       config:
         style:
@@ -111,6 +110,7 @@ slots:
                 borderRadius: 20px
                 padding: 6px 14px
                 width: 100%
+                boxSizing: border-box
 
     # ── Suchergebnisse ────────────────────────────────────────────────────────
     - component: f7-card-content
@@ -150,7 +150,7 @@ slots:
       config:
         style:
           borderTop: "2px solid #ff5500"
-          padding: 12px 16px
+          padding: 12px 16px 0 16px
       slots:
         default:
           - component: f7-row
@@ -179,7 +179,7 @@ slots:
                             borderRadius: 12px
                             objectFit: cover
                             boxShadow: "0 4px 16px rgba(0,0,0,0.4)"
-                # Titel + Artist + Buttons
+                # Titel + Artist + Playback-Buttons
                 - component: f7-col
                   config:
                     style:
@@ -239,11 +239,11 @@ slots:
                                 actionItem: "=props.stateItem"
                                 actionCommand: STOP
 
-    # ── Chromecast Auswahl ────────────────────────────────────────────────────
+    # ── Chromecast Chips ──────────────────────────────────────────────────────
     - component: f7-card-content
       config:
         style:
-          padding: 8px 16px 12px 16px
+          padding: 10px 16px 14px 16px
           borderTop: "1px solid #eee"
       slots:
         default:
@@ -251,36 +251,39 @@ slots:
             config:
               style:
                 color: "#888"
-                fontSize: 12px
+                fontSize: 11px
                 textTransform: uppercase
-                letterSpacing: "0.5px"
-                marginBottom: 4px
-              text: Abspielen auf
-          - component: f7-list
+                letterSpacing: "0.8px"
+                margin: "0 0 8px 0"
+              text: "▶ Abspielen auf"
+          - component: f7-row
             config:
-              noHairlines: true
               style:
-                margin: 0
+                flexWrap: wrap
+                gap: 8px
             slots:
               default:
                 - component: oh-repeater
                   config:
                     for: cc
                     fragment: true
-                    sourceType: itemsInGroup
-                    groupItem: "=props.chromecastGroupItem"
+                    sourceType: itemsWithTags
+                    itemTags: "=props.chromecastTag || 'Chromecast'"
                   slots:
                     default:
-                      - component: oh-list-item
+                      - component: f7-button
                         config:
-                          title: "=loop.cc.label"
+                          text: "=loop.cc.label"
+                          iconF7: airplayvideo
+                          iconSize: 16
+                          small: true
+                          outline: true
+                          color: "#ff5500"
+                          style:
+                            border: "1px solid #ff5500"
+                            borderRadius: 20px
+                            padding: 4px 12px
+                            color: "#ff5500"
                           action: command
                           actionItem: "=loop.cc.name"
                           actionCommand: "=@@props.streamUrlItem"
-                        slots:
-                          after:
-                            - component: f7-icon
-                              config:
-                                f7: airplayvideo
-                                size: 20
-                                color: "=#ff5500"
