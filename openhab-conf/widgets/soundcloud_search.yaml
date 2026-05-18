@@ -100,26 +100,14 @@ slots:
                     default:
                       - component: oh-input
                         config:
-                          variable: scQuery
-                          placeholder: Künstler oder Titel...
+                          item: "=props.queryItem"
+                          placeholder: Künstler oder Titel... (Enter zum Suchen)
                           clearButton: true
                           style:
                             border: "1px solid #ff5500"
                             borderRadius: 20px
                             padding: 6px 14px
                             width: 100%
-                - component: oh-button
-                  config:
-                    text: Suchen
-                    fill: true
-                    style:
-                      background: "#ff5500"
-                      color: white
-                      borderRadius: 20px
-                      flexShrink: "0"
-                    action: command
-                    actionItem: "=props.queryItem"
-                    actionCommand: "=vars.scQuery"
 
     # ── Ergebnisse ───────────────────────────────────────────────────────────
     - component: f7-card-content
