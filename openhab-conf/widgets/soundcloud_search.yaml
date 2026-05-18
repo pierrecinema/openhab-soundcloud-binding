@@ -132,10 +132,7 @@ slots:
                     for: track
                     fragment: true
                     sourceType: array
-                    in: >-
-                      =(items[props.resultsItem] && items[props.resultsItem].state && items[props.resultsItem].state.startsWith('['))
-                        ? JSON.parse(items[props.resultsItem].state)
-                        : []
+                    in: "=(@@props.resultsItem || '').startsWith('[') ? JSON.parse(@@props.resultsItem) : []"
                   slots:
                     default:
                       - component: f7-list-item
