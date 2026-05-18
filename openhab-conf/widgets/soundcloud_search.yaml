@@ -43,31 +43,68 @@ props:
       required: false
       context: item
 timestamp: 2026-05-18T00:00:00Z
-component: f7-block
+component: f7-card
 config:
   style:
-    padding: 0
+    margin: 0
 slots:
   default:
 
-    # ── Search ────────────────────────────────────────────────────────────────
-    - component: f7-list
+    # ── Orange Header (nur Anzeige) ───────────────────────────────────────────
+    - component: f7-card-header
       config:
-        inset: true
+        style:
+          background: "#ff5500"
+          color: white
+          fontWeight: "700"
+          fontSize: 18px
+          padding: 12px 16px
+          letterSpacing: 1px
       slots:
         default:
-          - component: oh-input-item
+          - component: f7-icon
             config:
-              item: "=props.queryItem"
-              label: SoundCloud Suche
-              placeholder: Künstler oder Titel...
-              clearButton: true
+              f7: music_note_2
+              style:
+                marginRight: 8px
+                verticalAlign: middle
+          - component: f7-block-title
+            config:
+              style:
+                display: inline
+                color: white
+                fontSize: 18px
+              text: SoundCloud
 
-    # ── Results ───────────────────────────────────────────────────────────────
-    - component: f7-list
+    # ── Suchfeld ─────────────────────────────────────────────────────────────
+    - component: f7-card-content
       config:
-        mediaList: true
-        inset: true
+        style:
+          padding: 8px 0 0 0
+      slots:
+        default:
+          - component: f7-list
+            config:
+              noHairlines: true
+              style:
+                margin: 0
+            slots:
+              default:
+                - component: oh-input-item
+                  config:
+                    item: "=props.queryItem"
+                    label: Suche
+                    placeholder: Künstler oder Titel...
+                    clearButton: true
+                    style:
+                      "--f7-label-text-color": "#ff5500"
+                      "--f7-input-focused-border-color": "#ff5500"
+
+    # ── Ergebnisse ───────────────────────────────────────────────────────────
+    - component: f7-card-content
+      config:
+        style:
+          padding: 0
       slots:
         default:
           - component: oh-repeater
@@ -80,39 +117,50 @@ slots:
                   : []
             slots:
               default:
-                - component: f7-list-item
+                - component: f7-list
                   config:
-                    title: "=loop.track.title"
-                    subtitle: "=loop.track.artist"
-                    after: "=(function(){ var d=loop.track.duration; return Math.floor(d/60)+':'+(d%60<10?'0':'')+(d%60); })()"
-                    mediaItem: true
-                    action: command
-                    actionItem: "=props.trackIdItem"
-                    actionCommand: "=String(loop.track.id)"
+                    mediaList: true
+                    noHairlines: true
+                    style:
+                      margin: 0
                   slots:
-                    media:
-                      - component: oh-image
+                    default:
+                      - component: f7-list-item
                         config:
-                          url: "=loop.track.artwork"
-                          style:
-                            width: 52px
-                            height: 52px
-                            borderRadius: 6px
-                            objectFit: cover
+                          title: "=loop.track.title"
+                          subtitle: "=loop.track.artist"
+                          after: "=(function(){ var d=loop.track.duration; return Math.floor(d/60)+':'+(d%60<10?'0':'')+(d%60); })()"
+                          mediaItem: true
+                          link: true
+                          action: command
+                          actionItem: "=props.trackIdItem"
+                          actionCommand: "=String(loop.track.id)"
+                        slots:
+                          media:
+                            - component: oh-image
+                              config:
+                                url: "=loop.track.artwork"
+                                style:
+                                  width: 52px
+                                  height: 52px
+                                  borderRadius: 6px
+                                  objectFit: cover
 
-    # ── Now playing + controls ────────────────────────────────────────────────
-    - component: f7-list
+    # ── Aktueller Track + Steuerung ───────────────────────────────────────────
+    - component: f7-card-footer
       config:
-        inset: true
+        style:
+          borderTop: "2px solid #ff5500"
+          padding: 8px 16px
       slots:
         default:
-          - component: f7-list-item
+          - component: f7-row
             config:
-              title: "=items[props.titleItem] ? items[props.titleItem].state : '—'"
-              subtitle: "=items[props.artistItem] ? items[props.artistItem].state : '—'"
-              mediaItem: true
+              style:
+                alignItems: center
+                gap: 10px
             slots:
-              media:
+              default:
                 - component: oh-image
                   config:
                     item: "=props.artworkItem"
@@ -121,11 +169,29 @@ slots:
                       height: 44px
                       borderRadius: 4px
                       objectFit: cover
-              after:
+                      flexShrink: "0"
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: oh-label
+                        config:
+                          item: "=props.titleItem"
+                          style:
+                            fontWeight: "600"
+                            fontSize: 13px
+                            display: block
+                      - component: oh-label
+                        config:
+                          item: "=props.artistItem"
+                          style:
+                            color: "#888"
+                            fontSize: 12px
+                            display: block
                 - component: f7-row
                   config:
                     style:
-                      gap: 6px
+                      gap: 4px
+                      marginLeft: auto
                   slots:
                     default:
                       - component: f7-button
