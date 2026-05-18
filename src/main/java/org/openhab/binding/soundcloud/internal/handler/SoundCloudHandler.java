@@ -132,7 +132,7 @@ public class SoundCloudHandler extends BaseThingHandler {
                     config.clientId, config.clientSecret, config.redirectUri, code);
             storage.put(STORAGE_ACCESS,  tokens.accessToken);
             storage.put(STORAGE_REFRESH, tokens.refreshToken);
-            apiClient = new SoundCloudApiClient(config.clientId, tokens.accessToken);
+            apiClient = new SoundCloudApiClient(config.clientId, config.webClientId, tokens.accessToken);
             updateStatus(ThingStatus.ONLINE);
             scheduleTokenRefresh(config, tokens.expiresIn);
             logger.info("SoundCloud erfolgreich autorisiert");
@@ -146,7 +146,7 @@ public class SoundCloudHandler extends BaseThingHandler {
 
     private void startWithToken(SoundCloudConfiguration config, String accessToken,
             @Nullable String refreshToken) {
-        SoundCloudApiClient client = new SoundCloudApiClient(config.clientId, accessToken);
+        SoundCloudApiClient client = new SoundCloudApiClient(config.clientId, config.webClientId, accessToken);
         apiClient = client;
         try {
             client.searchTracks("test");
@@ -186,7 +186,7 @@ public class SoundCloudHandler extends BaseThingHandler {
             if (client != null) {
                 client.setOauthToken(tokens.accessToken);
             } else {
-                apiClient = new SoundCloudApiClient(config.clientId, tokens.accessToken);
+                apiClient = new SoundCloudApiClient(config.clientId, config.webClientId, tokens.accessToken);
             }
             updateStatus(ThingStatus.ONLINE);
             scheduleTokenRefresh(config, tokens.expiresIn);

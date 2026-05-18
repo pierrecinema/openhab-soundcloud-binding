@@ -24,7 +24,9 @@ import com.google.gson.Gson;
 @NonNullByDefault
 public class SoundCloudApiClient {
 
-    private static final String API_BASE    = "https://api.soundcloud.com";
+    private static final String API_V1       = "https://api.soundcloud.com";
+    private static final String API_V2       = "https://api-v2.soundcloud.com";
+    private static final String APP_VERSION  = "1776363554";
     private static final int    SEARCH_LIMIT = 20;
 
     private final Logger logger = LoggerFactory.getLogger(SoundCloudApiClient.class);
@@ -32,11 +34,13 @@ public class SoundCloudApiClient {
     private final HttpClient httpClient;
     private final HttpClient noRedirectClient;
     private final String clientId;
+    private final String webClientId;
     private @Nullable String oauthToken;
 
-    public SoundCloudApiClient(String clientId, @Nullable String oauthToken) {
-        this.clientId   = clientId;
-        this.oauthToken = oauthToken;
+    public SoundCloudApiClient(String clientId, String webClientId, @Nullable String oauthToken) {
+        this.clientId    = clientId;
+        this.webClientId = webClientId;
+        this.oauthToken  = oauthToken;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -56,24 +60,26 @@ public class SoundCloudApiClient {
     // -------------------------------------------------------------------------
 
     public List<SoundCloudTrack> searchTracks(String query) throws IOException, InterruptedException {
-        String url = API_BASE + "/tracks?q=" + encode(query)
-                + "&access=playable&limit=" + SEARCH_LIMIT + "&linked_partitioning=true";
-        SoundCloudTrackSearchResponse resp = gson.fromJson(getPublic(url), SoundCloudTrackSearchResponse.class);
+        String url = API_V2 + "/search/tracks?q=" + encode(query)
+                + "&limit=" + SEARCH_LIMIT + "&client_id=" + webClientId + "&app_version=" + APP_VERSION;
+        logger.debug("Search (api-v2): {}", url);
+        SoundCloudTrackSearchResponse resp = gson.fromJson(getNoAuth(url), SoundCloudTrackSearchResponse.class);
         return resp.collection;
     }
 
     public List<SoundCloudPlaylist> searchPlaylists(String query) throws IOException, InterruptedException {
-        String url = API_BASE + "/playlists?q=" + encode(query) + "&limit=10&linked_partitioning=true";
-        SoundCloudPlaylistSearchResponse resp = gson.fromJson(getPublic(url), SoundCloudPlaylistSearchResponse.class);
+        String url = API_V2 + "/search/playlists?q=" + encode(query)
+                + "&limit=10&client_id=" + webClientId + "&app_version=" + APP_VERSION;
+        SoundCloudPlaylistSearchResponse resp = gson.fromJson(getNoAuth(url), SoundCloudPlaylistSearchResponse.class);
         return resp.collection;
     }
 
     public SoundCloudTrack getTrack(long trackId) throws IOException, InterruptedException {
-        return gson.fromJson(get(API_BASE + "/tracks/" + trackId), SoundCloudTrack.class);
+        return gson.fromJson(get(API_V1 + "/tracks/" + trackId), SoundCloudTrack.class);
     }
 
     public SoundCloudPlaylist getPlaylist(long playlistId) throws IOException, InterruptedException {
-        return gson.fromJson(get(API_BASE + "/playlists/" + playlistId), SoundCloudPlaylist.class);
+        return gson.fromJson(get(API_V1 + "/playlists/" + playlistId), SoundCloudPlaylist.class);
     }
 
     /**
@@ -138,13 +144,12 @@ public class SoundCloudApiClient {
         return response.body();
     }
 
-    /** Sends request without OAuth token — for public endpoints (search) that reject a token with empty scope. */
-    private String getPublic(String url) throws IOException, InterruptedException {
-        String fullUrl = appendClientId(url);
-        logger.debug("GET (public) {}", fullUrl);
+    /** Sends request without any auth or client_id appended — URL already contains all parameters. */
+    private String getNoAuth(String url) throws IOException, InterruptedException {
+        logger.debug("GET (no-auth) {}", url);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(fullUrl))
+                .uri(URI.create(url))
                 .timeout(Duration.ofSeconds(15))
                 .header("Accept", "application/json; charset=utf-8")
                 .GET()

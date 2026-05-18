@@ -30,6 +30,11 @@
                 <label>Redirect URI</label>
                 <description>OAuth Redirect URI registered in your SoundCloud app — must match exactly</description>
             </parameter>
+            <parameter name="webClientId" type="text" required="false">
+                <label>Web Client ID</label>
+                <description>SoundCloud internal web client_id used for search (api-v2). Default works until SoundCloud rotates it.</description>
+                <default>gxPRNsEq7CDD7Wvem4iymWOq3YfU7KS8</default>
+            </parameter>
         </config-description>
     </thing-type>
 
