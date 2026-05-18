@@ -1,0 +1,129 @@
+uid: soundcloud
+config:
+  label: SoundCloud
+  icon: f7:music_note_2
+slots:
+  default:
+    - component: oh-block
+      config:
+        title: Suche
+      slots:
+        default:
+          - component: oh-input-item
+            config:
+              item: SC_Query
+              label: Künstler oder Titel
+              placeholder: z.B. DJ Pedro Flores
+              clearButton: true
+              action: command
+              actionItem: SC_Query
+
+    - component: oh-block
+      config:
+        title: Ergebnisse
+      slots:
+        default:
+          - component: oh-repeater
+            config:
+              for: track
+              sourceType: expression
+              expression: >-
+                =(function(){
+                  try {
+                    var s = items.SC_Results.state;
+                    return (s && s !== '-' && s.startsWith('[')) ? JSON.parse(s) : [];
+                  } catch(e) { return []; }
+                })()
+            slots:
+              default:
+                - component: oh-list-item
+                  config:
+                    title: "=loop.track.title"
+                    subtitle: "=loop.track.artist + ' · ' + Math.floor(loop.track.duration / 60) + 'min ' + (loop.track.duration % 60) + 's'"
+                    thumbnail: "=loop.track.artwork"
+                    action: command
+                    actionItem: SC_TrackID
+                    actionCommand: "=String(loop.track.id)"
+
+    - component: oh-block
+      config:
+        title: Aktueller Track
+      slots:
+        default:
+          - component: oh-grid-row
+            slots:
+              default:
+                - component: oh-grid-col
+                  config:
+                    width: 20
+                  slots:
+                    default:
+                      - component: oh-image
+                        config:
+                          item: SC_ArtworkURL
+                          height: 80
+                - component: oh-grid-col
+                  config:
+                    width: 80
+                  slots:
+                    default:
+                      - component: oh-label-item
+                        config:
+                          item: SC_Title
+                          label: Titel
+                      - component: oh-label-item
+                        config:
+                          item: SC_Artist
+                          label: Artist
+                      - component: oh-label-item
+                        config:
+                          item: SC_Duration
+                          label: Dauer
+
+    - component: oh-block
+      config:
+        title: Steuerung
+      slots:
+        default:
+          - component: oh-grid-row
+            slots:
+              default:
+                - component: oh-grid-col
+                  config:
+                    width: 33
+                  slots:
+                    default:
+                      - component: oh-button-item
+                        config:
+                          item: SC_State
+                          label: Play
+                          action: command
+                          actionItem: SC_State
+                          actionCommand: PLAY
+                          color: green
+                - component: oh-grid-col
+                  config:
+                    width: 33
+                  slots:
+                    default:
+                      - component: oh-button-item
+                        config:
+                          item: SC_State
+                          label: Pause
+                          action: command
+                          actionItem: SC_State
+                          actionCommand: PAUSE
+                          color: orange
+                - component: oh-grid-col
+                  config:
+                    width: 34
+                  slots:
+                    default:
+                      - component: oh-button-item
+                        config:
+                          item: SC_State
+                          label: Stop
+                          action: command
+                          actionItem: SC_State
+                          actionCommand: STOP
+                          color: red

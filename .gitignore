@@ -1,5 +1,5 @@
 .env
-openhab-conf/
+openhab-conf/things/
 target/
 *.class
 *.jar

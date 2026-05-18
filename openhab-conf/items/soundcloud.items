@@ -1,0 +1,19 @@
+// SoundCloud Binding — Item Konfiguration
+// Datei ablegen in: openhab/conf/items/soundcloud.items
+
+// Gruppe — Equipment unter Zuhause im Semantic Model
+Group gSoundCloud "SoundCloud" <music> (Zuhause) ["Equipment"]
+
+// Player
+String   SC_TrackID       "Track ID"             (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:player#track-id" }
+String   SC_PlaylistID    "Playlist ID"           (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:player#playlist-id" }
+String   SC_Title         "Titel [%s]"            (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:player#title" }
+String   SC_Artist        "Artist [%s]"           (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:player#artist" }
+String   SC_ArtworkURL    "Cover URL [%s]"        (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:player#artwork-url" }
+Number   SC_Duration      "Dauer [%d s]"          (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:player#duration" }
+String   SC_StreamURL     "Stream URL [%s]"       (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:player#stream-url" }
+String   SC_State         "Status [%s]"           (gSoundCloud) ["Control"] { channel="soundcloud:account:myaccount:player#playback-state" }
+
+// Suche
+String   SC_Query         "Suche [%s]"            (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:search#query" }
+String   SC_Results       "Suchergebnisse [%s]"   (gSoundCloud) ["Point"] { channel="soundcloud:account:myaccount:search#results" }
