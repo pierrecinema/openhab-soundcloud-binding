@@ -108,7 +108,7 @@ slots:
                             borderRadius: 20px
                             padding: 6px 14px
                             width: 100%
-                - component: f7-button
+                - component: oh-button
                   config:
                     text: Suchen
                     fill: true
