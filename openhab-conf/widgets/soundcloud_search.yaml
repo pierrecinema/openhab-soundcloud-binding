@@ -51,7 +51,8 @@ component: f7-card
 config: {}
 slots:
   default:
-    # ── Search input ──────────────────────────────────────────────────────────
+
+    # ── Search ────────────────────────────────────────────────────────────────
     - component: f7-card-header
       config:
         style:
@@ -69,22 +70,14 @@ slots:
                 - component: f7-col
                   slots:
                     default:
-                      - component: f7-list
+                      - component: oh-input
                         config:
-                          inset: false
+                          item: "=props.queryItem"
+                          placeholder: Künstler oder Titel suchen...
+                          clearButton: true
                           style:
-                            margin: 0
-                        slots:
-                          default:
-                            - component: f7-list-input
-                              config:
-                                type: text
-                                placeholder: Künstler oder Titel suchen...
-                                clearButton: true
-                                variable: scQuery
-                                style:
-                                  "--f7-input-text-color": white
-                                  "--f7-input-placeholder-color": "rgba(255,255,255,0.6)"
+                            color: white
+                            "--f7-input-placeholder-color": "rgba(255,255,255,0.6)"
                 - component: f7-button
                   config:
                     iconF7: search
@@ -93,9 +86,9 @@ slots:
                       flexShrink: "0"
                     action: command
                     actionItem: "=props.queryItem"
-                    actionCommand: "=vars.scQuery"
+                    actionCommand: "=items[props.queryItem].state"
 
-    # ── Results list ──────────────────────────────────────────────────────────
+    # ── Results ───────────────────────────────────────────────────────────────
     - component: f7-card-content
       config:
         style:
@@ -108,14 +101,9 @@ slots:
               for: track
               sourceType: expression
               expression: >-
-                =(function(){
-                  var ri = props.resultsItem;
-                  try {
-                    var s = items[ri] ? items[ri].state : null;
-                    if (!s || s === '-' || !s.startsWith('[')) return [];
-                    return JSON.parse(s);
-                  } catch(e) { return []; }
-                })()
+                =(items[props.resultsItem] && items[props.resultsItem].state && items[props.resultsItem].state.startsWith('['))
+                  ? JSON.parse(items[props.resultsItem].state)
+                  : []
             slots:
               default:
                 - component: f7-list
