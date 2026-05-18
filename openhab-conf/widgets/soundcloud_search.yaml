@@ -22,6 +22,12 @@ props:
       type: TEXT
       required: true
       context: item
+    - name: streamUrlItem
+      label: Stream URL Item
+      description: String Item linked to soundcloud:account:...:player#stream-url
+      type: TEXT
+      required: false
+      context: item
     - name: titleItem
       label: Title Item
       type: TEXT
@@ -42,7 +48,13 @@ props:
       type: TEXT
       required: false
       context: item
-timestamp: 2026-05-18T00:00:00Z
+    - name: chromecastGroupItem
+      label: Chromecast Group Item
+      description: Group Item containing all Chromecast playuri items (one per Chromecast)
+      type: TEXT
+      required: false
+      context: item
+timestamp: 2026-05-19T00:00:00Z
 component: f7-card
 config:
   style:
@@ -81,36 +93,26 @@ slots:
                       margin: 0
                     text: SoundCloud
 
-    # ── Suchfeld + Button ────────────────────────────────────────────────────
+    # ── Suchfeld ─────────────────────────────────────────────────────────────
     - component: f7-card-content
       config:
         style:
           padding: 12px 16px 8px 16px
       slots:
         default:
-          - component: f7-row
+          - component: oh-input
             config:
+              item: "=props.queryItem"
+              placeholder: Künstler oder Titel...
+              clearButton: true
+              sendButton: true
               style:
-                alignItems: center
-                gap: 8px
-            slots:
-              default:
-                - component: f7-col
-                  slots:
-                    default:
-                      - component: oh-input
-                        config:
-                          item: "=props.queryItem"
-                          placeholder: Künstler oder Titel...
-                          clearButton: true
-                          sendButton: true
-                          style:
-                            border: "1px solid #ff5500"
-                            borderRadius: 20px
-                            padding: 6px 14px
-                            width: 100%
+                border: "1px solid #ff5500"
+                borderRadius: 20px
+                padding: 6px 14px
+                width: 100%
 
-    # ── Ergebnisse ───────────────────────────────────────────────────────────
+    # ── Suchergebnisse ────────────────────────────────────────────────────────
     - component: f7-card-content
       config:
         style:
@@ -143,8 +145,8 @@ slots:
                           actionItem: "=props.trackIdItem"
                           actionCommand: "=loop.track.id"
 
-    # ── Aktueller Track + Steuerung ───────────────────────────────────────────
-    - component: f7-card-footer
+    # ── Aktueller Track ───────────────────────────────────────────────────────
+    - component: f7-card-content
       config:
         style:
           borderTop: "2px solid #ff5500"
@@ -158,6 +160,7 @@ slots:
                 gap: 16px
             slots:
               default:
+                # Cover-Art
                 - component: f7-col
                   config:
                     style:
@@ -176,6 +179,7 @@ slots:
                             borderRadius: 12px
                             objectFit: cover
                             boxShadow: "0 4px 16px rgba(0,0,0,0.4)"
+                # Titel + Artist + Buttons
                 - component: f7-col
                   config:
                     style:
@@ -183,7 +187,7 @@ slots:
                       overflow: hidden
                       display: flex
                       flexDirection: column
-                      gap: 6px
+                      gap: 4px
                   slots:
                     default:
                       - component: oh-label
@@ -206,7 +210,7 @@ slots:
                       - component: f7-row
                         config:
                           style:
-                            gap: 12px
+                            gap: 8px
                             marginTop: 12px
                         slots:
                           default:
@@ -234,3 +238,49 @@ slots:
                                 action: command
                                 actionItem: "=props.stateItem"
                                 actionCommand: STOP
+
+    # ── Chromecast Auswahl ────────────────────────────────────────────────────
+    - component: f7-card-content
+      config:
+        style:
+          padding: 8px 16px 12px 16px
+          borderTop: "1px solid #eee"
+      slots:
+        default:
+          - component: f7-block-title
+            config:
+              style:
+                color: "#888"
+                fontSize: 12px
+                textTransform: uppercase
+                letterSpacing: "0.5px"
+                marginBottom: 4px
+              text: Abspielen auf
+          - component: f7-list
+            config:
+              noHairlines: true
+              style:
+                margin: 0
+            slots:
+              default:
+                - component: oh-repeater
+                  config:
+                    for: cc
+                    fragment: true
+                    sourceType: itemsInGroup
+                    groupItem: "=props.chromecastGroupItem"
+                  slots:
+                    default:
+                      - component: oh-list-item
+                        config:
+                          title: "=loop.cc.label"
+                          action: command
+                          actionItem: "=loop.cc.name"
+                          actionCommand: "=@@props.streamUrlItem"
+                        slots:
+                          after:
+                            - component: f7-icon
+                              config:
+                                f7: airplayvideo
+                                size: 20
+                                color: "=#ff5500"
