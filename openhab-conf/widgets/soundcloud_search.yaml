@@ -151,26 +151,29 @@ slots:
           padding: 12px 16px
       slots:
         default:
-          - component: f7-row
+          - component: f7-col
             config:
               style:
                 alignItems: center
-                gap: 14px
+                display: flex
+                flexDirection: column
+                gap: 10px
             slots:
               default:
                 - component: oh-image
                   config:
                     item: "=props.artworkItem"
                     style:
-                      width: 80px
-                      height: 80px
-                      borderRadius: 8px
+                      width: 320px
+                      height: 320px
+                      borderRadius: 12px
                       objectFit: cover
-                      flexShrink: "0"
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+                      boxShadow: "0 4px 16px rgba(0,0,0,0.4)"
+                      alignSelf: center
                 - component: f7-col
                   config:
                     style:
+                      width: 100%
                       overflow: hidden
                   slots:
                     default:
@@ -179,7 +182,7 @@ slots:
                           item: "=props.titleItem"
                           style:
                             fontWeight: "700"
-                            fontSize: 14px
+                            fontSize: 15px
                             display: block
                             whiteSpace: nowrap
                             overflow: hidden
@@ -189,37 +192,38 @@ slots:
                           item: "=props.artistItem"
                           style:
                             color: "#ff5500"
-                            fontSize: 12px
+                            fontSize: 13px
                             display: block
                             marginTop: 2px
-                      - component: f7-row
+                - component: f7-row
+                  config:
+                    style:
+                      gap: 12px
+                      justifyContent: center
+                      width: 100%
+                  slots:
+                    default:
+                      - component: f7-button
                         config:
-                          style:
-                            gap: 6px
-                            marginTop: 8px
-                        slots:
-                          default:
-                            - component: f7-button
-                              config:
-                                iconF7: play_fill
-                                iconSize: 20
-                                color: green
-                                action: command
-                                actionItem: "=props.stateItem"
-                                actionCommand: PLAY
-                            - component: f7-button
-                              config:
-                                iconF7: pause_fill
-                                iconSize: 20
-                                color: orange
-                                action: command
-                                actionItem: "=props.stateItem"
-                                actionCommand: PAUSE
-                            - component: f7-button
-                              config:
-                                iconF7: stop_fill
-                                iconSize: 20
-                                color: red
-                                action: command
-                                actionItem: "=props.stateItem"
-                                actionCommand: STOP
+                          iconF7: play_fill
+                          iconSize: 28
+                          color: green
+                          action: command
+                          actionItem: "=props.stateItem"
+                          actionCommand: PLAY
+                      - component: f7-button
+                        config:
+                          iconF7: pause_fill
+                          iconSize: 28
+                          color: orange
+                          action: command
+                          actionItem: "=props.stateItem"
+                          actionCommand: PAUSE
+                      - component: f7-button
+                        config:
+                          iconF7: stop_fill
+                          iconSize: 28
+                          color: red
+                          action: command
+                          actionItem: "=props.stateItem"
+                          actionCommand: STOP
