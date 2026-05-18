@@ -58,13 +58,13 @@ public class SoundCloudApiClient {
     public List<SoundCloudTrack> searchTracks(String query) throws IOException, InterruptedException {
         String url = API_BASE + "/tracks?q=" + encode(query)
                 + "&access=playable&limit=" + SEARCH_LIMIT + "&linked_partitioning=true";
-        SoundCloudTrackSearchResponse resp = gson.fromJson(get(url), SoundCloudTrackSearchResponse.class);
+        SoundCloudTrackSearchResponse resp = gson.fromJson(getPublic(url), SoundCloudTrackSearchResponse.class);
         return resp.collection;
     }
 
     public List<SoundCloudPlaylist> searchPlaylists(String query) throws IOException, InterruptedException {
         String url = API_BASE + "/playlists?q=" + encode(query) + "&limit=10&linked_partitioning=true";
-        SoundCloudPlaylistSearchResponse resp = gson.fromJson(get(url), SoundCloudPlaylistSearchResponse.class);
+        SoundCloudPlaylistSearchResponse resp = gson.fromJson(getPublic(url), SoundCloudPlaylistSearchResponse.class);
         return resp.collection;
     }
 
@@ -114,6 +114,7 @@ public class SoundCloudApiClient {
     // HTTP helpers
     // -------------------------------------------------------------------------
 
+    /** Sends request with OAuth token (for authenticated endpoints). */
     private String get(String url) throws IOException, InterruptedException {
         String fullUrl = appendClientId(url);
         logger.debug("GET {}", fullUrl);
@@ -130,6 +131,26 @@ public class SoundCloudApiClient {
         }
 
         HttpResponse<String> response = httpClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+
+        if (response.statusCode() != 200) {
+            throw new IOException("SoundCloud API returned HTTP " + response.statusCode() + " for " + url);
+        }
+        return response.body();
+    }
+
+    /** Sends request without OAuth token — for public endpoints (search) that reject a token with empty scope. */
+    private String getPublic(String url) throws IOException, InterruptedException {
+        String fullUrl = appendClientId(url);
+        logger.debug("GET (public) {}", fullUrl);
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(fullUrl))
+                .timeout(Duration.ofSeconds(15))
+                .header("Accept", "application/json; charset=utf-8")
+                .GET()
+                .build();
+
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
         if (response.statusCode() != 200) {
             throw new IOException("SoundCloud API returned HTTP " + response.statusCode() + " for " + url);
