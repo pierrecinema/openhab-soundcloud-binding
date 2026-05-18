@@ -24,76 +24,50 @@ props:
       context: item
     - name: titleItem
       label: Title Item
-      description: String Item linked to soundcloud:account:...:player#title
       type: TEXT
       required: false
       context: item
     - name: artistItem
       label: Artist Item
-      description: String Item linked to soundcloud:account:...:player#artist
       type: TEXT
       required: false
       context: item
     - name: artworkItem
       label: Artwork URL Item
-      description: String Item linked to soundcloud:account:...:player#artwork-url
       type: TEXT
       required: false
       context: item
     - name: stateItem
       label: Playback State Item
-      description: String Item linked to soundcloud:account:...:player#playback-state
       type: TEXT
       required: false
       context: item
 timestamp: 2026-05-18T00:00:00Z
-component: f7-card
-config: {}
+component: f7-block
+config:
+  style:
+    padding: 0
 slots:
   default:
 
     # ── Search ────────────────────────────────────────────────────────────────
-    - component: f7-card-header
+    - component: f7-list
       config:
-        style:
-          background: "#ff5500"
-          padding: 8px 12px
+        inset: true
       slots:
         default:
-          - component: f7-row
+          - component: oh-input-item
             config:
-              style:
-                alignItems: center
-                gap: 8px
-            slots:
-              default:
-                - component: f7-col
-                  slots:
-                    default:
-                      - component: oh-input
-                        config:
-                          item: "=props.queryItem"
-                          placeholder: Künstler oder Titel suchen...
-                          clearButton: true
-                          style:
-                            color: white
-                            "--f7-input-placeholder-color": "rgba(255,255,255,0.6)"
-                - component: f7-button
-                  config:
-                    iconF7: search
-                    style:
-                      color: white
-                      flexShrink: "0"
-                    action: command
-                    actionItem: "=props.queryItem"
-                    actionCommand: "=items[props.queryItem].state"
+              item: "=props.queryItem"
+              label: SoundCloud Suche
+              placeholder: Künstler oder Titel...
+              clearButton: true
 
     # ── Results ───────────────────────────────────────────────────────────────
-    - component: f7-card-content
+    - component: f7-list
       config:
-        style:
-          padding: 0
-          minHeight: 60px
+        mediaList: true
+        inset: true
       slots:
         default:
           - component: oh-repeater
@@ -106,48 +80,39 @@ slots:
                   : []
             slots:
               default:
-                - component: f7-list
+                - component: f7-list-item
                   config:
-                    mediaList: true
-                    style:
-                      margin: 0
+                    title: "=loop.track.title"
+                    subtitle: "=loop.track.artist"
+                    after: "=(function(){ var d=loop.track.duration; return Math.floor(d/60)+':'+(d%60<10?'0':'')+(d%60); })()"
+                    mediaItem: true
+                    action: command
+                    actionItem: "=props.trackIdItem"
+                    actionCommand: "=String(loop.track.id)"
                   slots:
-                    default:
-                      - component: f7-list-item
+                    media:
+                      - component: oh-image
                         config:
-                          title: "=loop.track.title"
-                          subtitle: "=loop.track.artist"
-                          after: "=(function(){ var d=loop.track.duration; return Math.floor(d/60)+':'+(d%60<10?'0':'')+(d%60); })()"
-                          mediaItem: true
-                          action: command
-                          actionItem: "=props.trackIdItem"
-                          actionCommand: "=String(loop.track.id)"
-                        slots:
-                          media:
-                            - component: oh-image
-                              config:
-                                url: "=loop.track.artwork"
-                                style:
-                                  width: 52px
-                                  height: 52px
-                                  borderRadius: 6px
-                                  objectFit: cover
+                          url: "=loop.track.artwork"
+                          style:
+                            width: 52px
+                            height: 52px
+                            borderRadius: 6px
+                            objectFit: cover
 
-    # ── Now playing ───────────────────────────────────────────────────────────
-    - component: f7-card-footer
+    # ── Now playing + controls ────────────────────────────────────────────────
+    - component: f7-list
       config:
-        style:
-          padding: 8px 12px
-          borderTop: "1px solid var(--f7-card-border-color)"
+        inset: true
       slots:
         default:
-          - component: f7-row
+          - component: f7-list-item
             config:
-              style:
-                alignItems: center
-                gap: 10px
+              title: "=items[props.titleItem] ? items[props.titleItem].state : '—'"
+              subtitle: "=items[props.artistItem] ? items[props.artistItem].state : '—'"
+              mediaItem: true
             slots:
-              default:
+              media:
                 - component: oh-image
                   config:
                     item: "=props.artworkItem"
@@ -156,30 +121,11 @@ slots:
                       height: 44px
                       borderRadius: 4px
                       objectFit: cover
-                      flexShrink: "0"
-                - component: f7-col
-                  slots:
-                    default:
-                      - component: oh-label
-                        config:
-                          item: "=props.titleItem"
-                          style:
-                            fontWeight: "600"
-                            fontSize: 13px
-                            display: block
-                      - component: oh-label
-                        config:
-                          item: "=props.artistItem"
-                          style:
-                            color: var(--f7-list-item-footer-text-color)
-                            fontSize: 12px
-                            display: block
+              after:
                 - component: f7-row
                   config:
                     style:
-                      gap: 4px
-                      marginLeft: auto
-                      flexShrink: "0"
+                      gap: 6px
                   slots:
                     default:
                       - component: f7-button
