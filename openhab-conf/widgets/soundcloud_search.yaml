@@ -56,45 +56,51 @@ slots:
       config:
         style:
           background: "#ff5500"
-          color: white
-          padding: 12px 16px
+          padding: 8px 12px
       slots:
         default:
           - component: f7-row
+            config:
+              style:
+                alignItems: center
+                gap: 8px
             slots:
               default:
                 - component: f7-col
-                  config:
-                    width: 80
                   slots:
                     default:
-                      - component: oh-input
+                      - component: f7-list
                         config:
-                          item: "=props.queryItem"
-                          placeholder: Künstler oder Titel suchen...
-                          clearButton: true
+                          inset: false
                           style:
-                            color: white
-                            "--f7-input-placeholder-color": "rgba(255,255,255,0.6)"
-                - component: f7-col
+                            margin: 0
+                        slots:
+                          default:
+                            - component: f7-list-input
+                              config:
+                                type: text
+                                placeholder: Künstler oder Titel suchen...
+                                clearButton: true
+                                variable: scQuery
+                                style:
+                                  "--f7-input-text-color": white
+                                  "--f7-input-placeholder-color": "rgba(255,255,255,0.6)"
+                - component: f7-button
                   config:
-                    width: 20
-                  slots:
-                    default:
-                      - component: f7-button
-                        config:
-                          iconF7: search
-                          style:
-                            color: white
-                          action: command
-                          actionItem: "=props.queryItem"
-                          actionCommand: "=items[props.queryItem].state"
+                    iconF7: search
+                    style:
+                      color: white
+                      flexShrink: "0"
+                    action: command
+                    actionItem: "=props.queryItem"
+                    actionCommand: "=vars.scQuery"
 
     # ── Results list ──────────────────────────────────────────────────────────
     - component: f7-card-content
       config:
         style:
           padding: 0
+          minHeight: 60px
       slots:
         default:
           - component: oh-repeater
@@ -103,9 +109,11 @@ slots:
               sourceType: expression
               expression: >-
                 =(function(){
+                  var ri = props.resultsItem;
                   try {
-                    var s = items[props.resultsItem].state;
-                    return (s && s !== '-' && s.startsWith('[')) ? JSON.parse(s) : [];
+                    var s = items[ri] ? items[ri].state : null;
+                    if (!s || s === '-' || !s.startsWith('[')) return [];
+                    return JSON.parse(s);
                   } catch(e) { return []; }
                 })()
             slots:
@@ -121,22 +129,19 @@ slots:
                         config:
                           title: "=loop.track.title"
                           subtitle: "=loop.track.artist"
-                          after: "=(function(){ var m=Math.floor(loop.track.duration/60); var s=loop.track.duration%60; return m+':'+(s<10?'0':'')+s; })()"
+                          after: "=(function(){ var d=loop.track.duration; return Math.floor(d/60)+':'+(d%60<10?'0':'')+(d%60); })()"
                           mediaItem: true
-                          chevronCenter: false
                           action: command
                           actionItem: "=props.trackIdItem"
                           actionCommand: "=String(loop.track.id)"
                         slots:
                           media:
-                            - component: f7-photo-browser
-                              config: {}
                             - component: oh-image
                               config:
                                 url: "=loop.track.artwork"
                                 style:
-                                  width: 56px
-                                  height: 56px
+                                  width: 52px
+                                  height: 52px
                                   borderRadius: 6px
                                   objectFit: cover
 
@@ -144,7 +149,7 @@ slots:
     - component: f7-card-footer
       config:
         style:
-          padding: 8px 16px
+          padding: 8px 12px
           borderTop: "1px solid var(--f7-card-border-color)"
       slots:
         default:
@@ -152,7 +157,7 @@ slots:
             config:
               style:
                 alignItems: center
-                gap: 12px
+                gap: 10px
             slots:
               default:
                 - component: oh-image
@@ -173,17 +178,20 @@ slots:
                           style:
                             fontWeight: "600"
                             fontSize: 13px
+                            display: block
                       - component: oh-label
                         config:
                           item: "=props.artistItem"
                           style:
                             color: var(--f7-list-item-footer-text-color)
                             fontSize: 12px
+                            display: block
                 - component: f7-row
                   config:
                     style:
-                      gap: 6px
+                      gap: 4px
                       marginLeft: auto
+                      flexShrink: "0"
                   slots:
                     default:
                       - component: f7-button
