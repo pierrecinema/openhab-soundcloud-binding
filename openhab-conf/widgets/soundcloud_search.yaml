@@ -53,6 +53,12 @@ props:
       description: "Tag on your Chromecast playuri items (default: Chromecast)"
       type: TEXT
       required: false
+    - name: chromecastTargetItem
+      label: Chromecast Target Item
+      description: String Item that stores the selected Chromecast (e.g. SC_ChromecastTarget)
+      type: TEXT
+      required: false
+      context: item
 timestamp: 2026-05-19T00:00:00Z
 component: f7-card
 config:
@@ -238,6 +244,15 @@ slots:
                                 action: command
                                 actionItem: "=props.stateItem"
                                 actionCommand: STOP
+                            - component: oh-button
+                              config:
+                                iconF7: airplayvideo
+                                iconSize: 32
+                                style:
+                                  color: "#ff5500"
+                                action: command
+                                actionItem: "=@@props.chromecastTargetItem"
+                                actionCommand: "=@@props.streamUrlItem"
 
     # ── Chromecast Chips ──────────────────────────────────────────────────────
     - component: f7-card-content
@@ -274,14 +289,15 @@ slots:
                       - component: oh-button
                         config:
                           text: "=loop.cc.label"
-                          iconF7: airplayvideo
+                          iconF7: "=(@@props.chromecastTargetItem === loop.cc.name) ? 'checkmark_circle_fill' : 'airplayvideo'"
                           small: true
                           outline: true
                           style:
-                            border: "1px solid #ff5500"
                             borderRadius: 20px
                             padding: 4px 12px
-                            color: "#ff5500"
+                            border: "=(@@props.chromecastTargetItem === loop.cc.name) ? '2px solid #ff5500' : '1px solid #ccc'"
+                            color: "=(@@props.chromecastTargetItem === loop.cc.name) ? '#ff5500' : '#888'"
+                            fontWeight: "=(@@props.chromecastTargetItem === loop.cc.name) ? '700' : '400'"
                           action: command
-                          actionItem: "=loop.cc.name"
-                          actionCommand: "=@@props.streamUrlItem"
+                          actionItem: "=props.chromecastTargetItem"
+                          actionCommand: "=loop.cc.name"
