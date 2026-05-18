@@ -14,6 +14,7 @@ import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudPlaylist;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudPlaylistSearchResponse;
+import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudStreamResponse;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudTrack;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudTrackSearchResponse;
 import org.slf4j.Logger;
@@ -74,8 +75,15 @@ public class SoundCloudApiClient {
         return resp.collection;
     }
 
-    public SoundCloudTrack getTrack(long trackId) throws IOException, InterruptedException {
-        return gson.fromJson(get(API_V1 + "/tracks/" + trackId), SoundCloudTrack.class);
+    /**
+     * Fetches full track metadata via api-v2 (webClientId, no auth).
+     * Returns transcodings in track.media — use resolveStreamUrlV2() to get the MP3 URL.
+     */
+    public SoundCloudTrack getTrackV2(long trackId) throws IOException, InterruptedException {
+        String url = API_V2 + "/tracks/" + trackId
+                + "?client_id=" + webClientId + "&app_version=" + APP_VERSION;
+        logger.debug("Get track (api-v2): {}", url);
+        return gson.fromJson(getNoAuth(url), SoundCloudTrack.class);
     }
 
     public SoundCloudPlaylist getPlaylist(long playlistId) throws IOException, InterruptedException {
@@ -83,37 +91,36 @@ public class SoundCloudApiClient {
     }
 
     /**
-     * Resolves the direct CDN stream URL for a track.
-     * The v1 API returns a 302 redirect to the actual MP3 — we capture the Location header.
+     * Resolves the direct MP3 stream URL via api-v2 transcodings.
+     * Prefers "progressive" (direct MP3); falls back to first available transcoding.
+     * The transcoding URL returns JSON: {"url":"https://cf-media.sndcdn.com/...mp3"}
      */
-    public @Nullable String getStreamUrl(SoundCloudTrack track) throws IOException, InterruptedException {
-        String streamUrl = track.streamUrl;
-        if (streamUrl == null || streamUrl.isEmpty()) {
-            logger.warn("No stream_url for track '{}' (id={})", track.title, track.id);
+    public @Nullable String resolveStreamUrlV2(SoundCloudTrack track) throws IOException, InterruptedException {
+        String transcodingUrl = null;
+
+        // Prefer progressive (direct MP3 — works with Chromecast)
+        for (SoundCloudTrack.Transcoding t : track.media.transcodings) {
+            if ("progressive".equals(t.format.protocol)) {
+                transcodingUrl = t.url;
+                break;
+            }
+        }
+        // Fallback: first available transcoding (may be HLS)
+        if (transcodingUrl == null && !track.media.transcodings.isEmpty()) {
+            transcodingUrl = track.media.transcodings.get(0).url;
+            logger.debug("No progressive transcoding for '{}', using: {}", track.title, transcodingUrl);
+        }
+
+        if (transcodingUrl == null || transcodingUrl.isEmpty()) {
+            logger.warn("No transcodings available for track '{}' (id={})", track.title, track.id);
             return null;
         }
 
-        String url = streamUrl + "?client_id=" + clientId;
-        logger.debug("Resolving stream URL: {}", url);
-
-        HttpRequest.Builder builder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .timeout(Duration.ofSeconds(10))
-                .header("Accept", "*/*")
-                .GET();
-
-        String token = oauthToken;
-        if (token != null && !token.isBlank()) {
-            builder.header("Authorization", "OAuth " + token);
-        }
-
-        HttpResponse<String> response = noRedirectClient.send(builder.build(), HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() == 301 || response.statusCode() == 302) {
-            return response.headers().firstValue("Location").orElse(null);
-        }
-        logger.warn("Unexpected status {} resolving stream for track '{}'", response.statusCode(), track.title);
-        return null;
+        String resolveUrl = transcodingUrl + "?client_id=" + webClientId + "&app_version=" + APP_VERSION;
+        logger.debug("Resolving stream URL: {}", resolveUrl);
+        String json = getNoAuth(resolveUrl);
+        SoundCloudStreamResponse resp = gson.fromJson(json, SoundCloudStreamResponse.class);
+        return resp.url.isEmpty() ? null : resp.url;
     }
 
     // -------------------------------------------------------------------------

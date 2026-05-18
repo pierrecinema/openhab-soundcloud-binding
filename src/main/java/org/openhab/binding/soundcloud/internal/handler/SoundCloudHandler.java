@@ -270,9 +270,12 @@ public class SoundCloudHandler extends BaseThingHandler {
         if (client == null) return;
         scheduler.submit(() -> {
             try {
-                SoundCloudTrack track = client.getTrack(trackId);
-                String streamUrl = client.getStreamUrl(track);
-                if (streamUrl == null) return;
+                SoundCloudTrack track = client.getTrackV2(trackId);
+                String streamUrl = client.resolveStreamUrlV2(track);
+                if (streamUrl == null) {
+                    logger.warn("Kein Stream-URL für Track {} ({})", trackId, track.title);
+                    return;
+                }
                 currentTrack = track;
                 currentStreamUrl = streamUrl;
                 playbackState = "PLAYING";
