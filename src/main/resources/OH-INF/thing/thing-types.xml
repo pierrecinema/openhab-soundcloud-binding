@@ -52,7 +52,8 @@
             <channel id="artwork-url"    typeId="artwork-url"/>
             <channel id="duration"       typeId="duration"/>
             <channel id="stream-url"     typeId="stream-url"/>
-            <channel id="playback-state" typeId="playback-state"/>
+            <channel id="playback-state"      typeId="playback-state"/>
+            <channel id="chromecast-target"  typeId="chromecast-target"/>
         </channels>
     </channel-group-type>
 
@@ -138,6 +139,16 @@
                 <option value="STOP">Stop</option>
             </options>
         </command>
+    </channel-type>
+
+    <channel-type id="chromecast-target">
+        <item-type>String</item-type>
+        <label>Chromecast Target</label>
+        <description>
+            Name of the selected Chromecast playuri item. Set by the widget when the user picks a Chromecast.
+            Link this channel to an item and use it as chromecastTargetItem in the widget.
+        </description>
+        <state pattern="%s"/>
     </channel-type>
 
     <channel-type id="search-query">

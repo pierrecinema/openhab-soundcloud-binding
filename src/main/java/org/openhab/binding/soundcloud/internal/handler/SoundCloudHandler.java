@@ -232,6 +232,10 @@ public class SoundCloudHandler extends BaseThingHandler {
             case CHANNEL_PLAYLIST_ID:
                 loadPlaylist(parseLong(command.toString()));
                 break;
+            case CHANNEL_CHROMECAST_TARGET:
+                // Store the selected Chromecast target item name
+                updateState(CHANNEL_CHROMECAST_TARGET, new StringType(command.toString()));
+                break;
             default:
                 logger.debug("Kein Handler für Channel {}", channelUID.getId());
         }

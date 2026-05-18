@@ -55,7 +55,7 @@ props:
       required: false
     - name: chromecastTargetItem
       label: Chromecast Target Item
-      description: String Item that stores the selected Chromecast (e.g. SC_ChromecastTarget)
+      description: String Item linked to soundcloud:account:...:player#chromecast-target
       type: TEXT
       required: false
       context: item

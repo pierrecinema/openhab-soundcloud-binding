@@ -22,8 +22,11 @@ public class SoundCloudBindingConstants {
     public static final String CHANNEL_PLAYLIST_ID    = "player#playlist-id";
 
     // Search channel group + channels
-    public static final String CHANNEL_SEARCH_QUERY   = "search#query";
-    public static final String CHANNEL_SEARCH_RESULTS = "search#results";
+    public static final String CHANNEL_SEARCH_QUERY      = "search#query";
+    public static final String CHANNEL_SEARCH_RESULTS    = "search#results";
+
+    // Chromecast target channel (stores the selected Chromecast playuri item name)
+    public static final String CHANNEL_CHROMECAST_TARGET = "player#chromecast-target";
 
     // Config property keys
     public static final String CONFIG_CLIENT_ID   = "clientId";
