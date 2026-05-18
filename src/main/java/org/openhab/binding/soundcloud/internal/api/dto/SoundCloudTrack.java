@@ -17,6 +17,9 @@ public class SoundCloudTrack {
     @SerializedName("permalink_url")
     public String permalinkUrl = "";
 
+    @SerializedName("stream_url")
+    public String streamUrl = "";
+
     public SoundCloudUser user = new SoundCloudUser();
     public Media media = new Media();
 
