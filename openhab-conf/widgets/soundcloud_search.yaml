@@ -271,14 +271,12 @@ slots:
                     itemTags: "=props.chromecastTag || 'Chromecast'"
                   slots:
                     default:
-                      - component: f7-button
+                      - component: oh-button
                         config:
                           text: "=loop.cc.label"
                           iconF7: airplayvideo
-                          iconSize: 16
                           small: true
                           outline: true
-                          color: "#ff5500"
                           style:
                             border: "1px solid #ff5500"
                             borderRadius: 20px
