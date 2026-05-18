@@ -129,7 +129,10 @@ slots:
                   config:
                     for: track
                     sourceType: expression
-                    expression: "=(function(){var s=items[props.resultsItem]&&items[props.resultsItem].state;return s&&s[0]==='['?JSON.parse(s):[];})()"
+                    expression: >-
+                      =(items[props.resultsItem] && items[props.resultsItem].state && items[props.resultsItem].state.startsWith('['))
+                        ? JSON.parse(items[props.resultsItem].state)
+                        : []
                   slots:
                     default:
                       - component: f7-list-item
@@ -137,21 +140,9 @@ slots:
                           title: "=loop.track.title"
                           subtitle: "=loop.track.artist"
                           after: "=(function(){ var d=loop.track.duration; return Math.floor(d/60)+':'+(d%60<10?'0':'')+(d%60); })()"
-                          mediaItem: true
-                          link: true
                           action: command
                           actionItem: "=props.trackIdItem"
                           actionCommand: "=String(loop.track.id)"
-                        slots:
-                          media:
-                            - component: oh-image
-                              config:
-                                url: "=loop.track.artwork"
-                                style:
-                                  width: 52px
-                                  height: 52px
-                                  borderRadius: 6px
-                                  objectFit: cover
 
     # ── Aktueller Track + Steuerung ───────────────────────────────────────────
     - component: f7-card-footer
