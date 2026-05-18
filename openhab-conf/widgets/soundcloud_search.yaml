@@ -50,7 +50,7 @@ config:
 slots:
   default:
 
-    # ── Orange Header (nur Anzeige) ───────────────────────────────────────────
+    # ── Orange Header ────────────────────────────────────────────────────────
     - component: f7-card-header
       config:
         style:
@@ -59,46 +59,67 @@ slots:
           fontWeight: "700"
           fontSize: 18px
           padding: 12px 16px
-          letterSpacing: 1px
       slots:
         default:
-          - component: f7-icon
-            config:
-              f7: music_note_2
-              style:
-                marginRight: 8px
-                verticalAlign: middle
-          - component: f7-block-title
+          - component: f7-row
             config:
               style:
-                display: inline
-                color: white
-                fontSize: 18px
-              text: SoundCloud
+                alignItems: center
+                gap: 10px
+            slots:
+              default:
+                - component: f7-icon
+                  config:
+                    f7: music_note_2
+                    size: 22
+                    color: white
+                - component: f7-block-title
+                  config:
+                    style:
+                      color: white
+                      fontSize: 18px
+                      margin: 0
+                    text: SoundCloud
 
-    # ── Suchfeld ─────────────────────────────────────────────────────────────
+    # ── Suchfeld + Button ────────────────────────────────────────────────────
     - component: f7-card-content
       config:
         style:
-          padding: 8px 0 0 0
+          padding: 12px 16px 8px 16px
       slots:
         default:
-          - component: f7-list
+          - component: f7-row
             config:
-              noHairlines: true
               style:
-                margin: 0
+                alignItems: center
+                gap: 8px
             slots:
               default:
-                - component: oh-input-item
+                - component: f7-col
+                  slots:
+                    default:
+                      - component: oh-input
+                        config:
+                          variable: scQuery
+                          placeholder: Künstler oder Titel...
+                          clearButton: true
+                          style:
+                            border: "1px solid #ff5500"
+                            borderRadius: 20px
+                            padding: 6px 14px
+                            width: 100%
+                - component: f7-button
                   config:
-                    item: "=props.queryItem"
-                    label: Suche
-                    placeholder: Künstler oder Titel...
-                    clearButton: true
+                    text: Suchen
+                    fill: true
                     style:
-                      "--f7-label-text-color": "#ff5500"
-                      "--f7-input-focused-border-color": "#ff5500"
+                      background: "#ff5500"
+                      color: white
+                      borderRadius: 20px
+                      flexShrink: "0"
+                    action: command
+                    actionItem: "=props.queryItem"
+                    actionCommand: "=vars.scQuery"
 
     # ── Ergebnisse ───────────────────────────────────────────────────────────
     - component: f7-card-content
