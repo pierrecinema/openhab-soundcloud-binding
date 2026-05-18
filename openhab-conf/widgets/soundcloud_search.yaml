@@ -135,13 +135,13 @@ slots:
                     in: "=(@@props.resultsItem || '').startsWith('[') ? JSON.parse(@@props.resultsItem) : []"
                   slots:
                     default:
-                      - component: f7-list-item
+                      - component: oh-list-item
                         config:
                           title: "=loop.track.title"
                           subtitle: "=loop.track.artist"
                           action: command
                           actionItem: "=props.trackIdItem"
-                          actionCommand: "=String(loop.track.id)"
+                          actionCommand: "=loop.track.id"
 
     # ── Aktueller Track + Steuerung ───────────────────────────────────────────
     - component: f7-card-footer
