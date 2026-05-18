@@ -101,8 +101,9 @@ slots:
                       - component: oh-input
                         config:
                           item: "=props.queryItem"
-                          placeholder: Künstler oder Titel... (Enter zum Suchen)
+                          placeholder: Künstler oder Titel...
                           clearButton: true
+                          sendButton: true
                           style:
                             border: "1px solid #ff5500"
                             borderRadius: 20px
