@@ -276,6 +276,8 @@ Configure the rule triggers as **Item Command** on: `SC_CC_Control`, `SC_CC_Stop
 
 ---
 
+for help https://community.openhab.org/t/openhab-soundcloud-binding-new/169324
+
 ## License
 
 MIT
