@@ -168,13 +168,15 @@ slots:
               style:
                 alignItems: flex-start
                 gap: 16px
+                flexWrap: wrap
             slots:
               default:
                 # Cover-Art
                 - component: f7-col
                   config:
                     style:
-                      flex: "0 0 auto"
+                      flex: "0 0 320px"
+                      maxWidth: "100%"
                   slots:
                     default:
                       - component: oh-image
@@ -182,10 +184,9 @@ slots:
                           item: "=props.artworkItem"
                           style:
                             display: block
-                            width: 320px
-                            height: 320px
-                            minWidth: 320px
-                            minHeight: 320px
+                            width: "100%"
+                            aspectRatio: "1 / 1"
+                            height: auto
                             borderRadius: 12px
                             objectFit: cover
                             boxShadow: "0 4px 16px rgba(0,0,0,0.4)"
@@ -193,7 +194,8 @@ slots:
                 - component: f7-col
                   config:
                     style:
-                      flex: "1 1 auto"
+                      flex: "1 1 220px"
+                      minWidth: "220px"
                       overflow: hidden
                       display: flex
                       flexDirection: column
