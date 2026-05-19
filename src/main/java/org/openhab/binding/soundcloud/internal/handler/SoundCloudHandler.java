@@ -138,9 +138,9 @@ public class SoundCloudHandler extends BaseThingHandler {
             logger.info("SoundCloud erfolgreich autorisiert");
         } catch (Exception e) {
             logger.warn("Token-Austausch fehlgeschlagen: {}", e.getMessage());
+            // registerServlet setzt den Status bereits mit der Auth-URL;
+            // kein zweites updateStatus, das die URL überschreiben würde.
             registerServlet(config);
-            updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
-                    "Token-Austausch fehlgeschlagen: " + e.getMessage());
         }
     }
 
@@ -192,6 +192,22 @@ public class SoundCloudHandler extends BaseThingHandler {
             scheduleTokenRefresh(config, tokens.expiresIn);
             logger.info("OAuth-Token erfolgreich erneuert");
         } catch (Exception e) {
+            logger.warn("Token-Refresh fehlgeschlagen: {} — prüfe ob Access-Token noch gültig", e.getMessage());
+            // Erst prüfen ob der bestehende Access-Token noch funktioniert,
+            // bevor Tokens gelöscht und Re-Auth verlangt wird.
+            String existingAccess = storage.get(STORAGE_ACCESS);
+            SoundCloudApiClient client = apiClient;
+            if (existingAccess != null && client != null) {
+                try {
+                    client.searchTracks("test");
+                    logger.info("Access-Token noch gültig — bleibe online, Refresh-Retry in 5 Minuten");
+                    updateStatus(ThingStatus.ONLINE);
+                    scheduleTokenRefresh(config, 300);
+                    return;
+                } catch (Exception e2) {
+                    logger.debug("Access-Token ebenfalls abgelaufen: {}", e2.getMessage());
+                }
+            }
             storage.remove(STORAGE_ACCESS);
             storage.remove(STORAGE_REFRESH);
             registerServlet(config);
