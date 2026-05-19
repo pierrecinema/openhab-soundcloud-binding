@@ -179,7 +179,7 @@ public class SoundCloudHandler extends BaseThingHandler {
     private void refreshAccessToken(SoundCloudConfiguration config, String refreshToken) {
         try {
             SoundCloudTokenResponse tokens = oauthClient.refreshToken(
-                    config.clientId, config.clientSecret, config.redirectUri, refreshToken);
+                    config.clientId, config.clientSecret, refreshToken);
             storage.put(STORAGE_ACCESS,  tokens.accessToken);
             storage.put(STORAGE_REFRESH, tokens.refreshToken);
             SoundCloudApiClient client = apiClient;
