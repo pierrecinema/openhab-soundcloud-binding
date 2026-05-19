@@ -61,13 +61,25 @@ props:
       context: item
     - name: chromecastControlItem
       label: Chromecast Control Item
-      description: Player Item linked to chromecast:...:control (for Pause/Stop)
+      description: Player Item linked to chromecast:...:control (Play/Pause)
+      type: TEXT
+      required: false
+      context: item
+    - name: chromecastStopItem
+      label: Chromecast Stop Item
+      description: Switch Item linked to chromecast:...:stop
       type: TEXT
       required: false
       context: item
     - name: chromecastVolumeItem
       label: Chromecast Volume Item
       description: Dimmer Item linked to chromecast:...:volume (0-100)
+      type: TEXT
+      required: false
+      context: item
+    - name: chromecastMuteItem
+      label: Chromecast Mute Item
+      description: Switch Item linked to chromecast:...:mute
       type: TEXT
       required: false
       context: item
@@ -258,8 +270,17 @@ slots:
                                 style:
                                   color: red
                                 action: command
-                                actionItem: "=props.chromecastControlItem"
-                                actionCommand: STOP
+                                actionItem: "=props.chromecastStopItem"
+                                actionCommand: ON
+                            - component: oh-button
+                              config:
+                                iconF7: "=(@@props.chromecastMuteItem === 'ON') ? 'speaker_slash_fill' : 'speaker_2_fill'"
+                                iconSize: 32
+                                style:
+                                  color: "=(@@props.chromecastMuteItem === 'ON') ? '#ff5500' : 'gray'"
+                                action: command
+                                actionItem: "=props.chromecastMuteItem"
+                                actionCommand: "=(@@props.chromecastMuteItem === 'ON') ? 'OFF' : 'ON'"
                       # Volume Slider
                       - component: f7-row
                         config:
