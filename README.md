@@ -19,9 +19,14 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 - **OAuth 2.0** authentication — authorise once in the browser, tokens are stored and auto-refreshed
 
 ---
-<img width="1080" height="2156" alt="Screenshot_20260519_031657_openHAB" src="https://github.com/user-attachments/assets/0e49f004-7d13-401b-9e2b-59d5ca8b88cc" />
+
+
+
 
 <img width="1919" height="922" alt="Screenshot 2026-05-19 033922" src="https://github.com/user-attachments/assets/f3472f6f-c59d-45cf-b3f4-fec435464925" />
+
+
+<img width="1080" height="4652" alt="Screenshot_20260519_033512_openHAB" src="https://github.com/user-attachments/assets/aa5b6d75-f38c-44cd-833c-916dad4091ce" />
 
 
 ---
