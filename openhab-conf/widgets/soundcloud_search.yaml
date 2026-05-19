@@ -53,6 +53,18 @@ props:
       description: "Tag on your Chromecast playuri items (default: Chromecast)"
       type: TEXT
       required: false
+    - name: chromecastControlItem
+      label: Chromecast Control Item
+      description: Player Item linked to chromecast:...:control (for Pause/Stop)
+      type: TEXT
+      required: false
+      context: item
+    - name: chromecastVolumeItem
+      label: Chromecast Volume Item
+      description: Dimmer Item linked to chromecast:...:volume (0-100)
+      type: TEXT
+      required: false
+      context: item
 timestamp: 2026-05-19T00:00:00Z
 component: f7-card
 config:
@@ -222,22 +234,51 @@ slots:
                                 action: command
                                 actionItem: "=props.stateItem"
                                 actionCommand: PLAY
-                            - component: f7-button
+                            - component: oh-button
                               config:
                                 iconF7: pause_fill
                                 iconSize: 32
-                                color: orange
+                                style:
+                                  color: orange
                                 action: command
-                                actionItem: "=props.stateItem"
+                                actionItem: "=props.chromecastControlItem"
                                 actionCommand: PAUSE
-                            - component: f7-button
+                            - component: oh-button
                               config:
                                 iconF7: stop_fill
                                 iconSize: 32
-                                color: red
+                                style:
+                                  color: red
                                 action: command
-                                actionItem: "=props.stateItem"
+                                actionItem: "=props.chromecastControlItem"
                                 actionCommand: STOP
+                      # Volume Slider
+                      - component: f7-row
+                        config:
+                          style:
+                            alignItems: center
+                            gap: 8px
+                            marginTop: 12px
+                        slots:
+                          default:
+                            - component: f7-icon
+                              config:
+                                f7: speaker_fill
+                                size: 18
+                                color: gray
+                            - component: oh-slider
+                              config:
+                                item: "=props.chromecastVolumeItem"
+                                min: 0
+                                max: 100
+                                step: 5
+                                style:
+                                  flex: "1"
+                            - component: f7-icon
+                              config:
+                                f7: speaker_3_fill
+                                size: 18
+                                color: gray
 
     # ── Chromecast Chips ──────────────────────────────────────────────────────
     - component: f7-card-content
