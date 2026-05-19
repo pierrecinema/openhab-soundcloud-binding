@@ -6,7 +6,7 @@
 
     <groupId>org.openhab.binding</groupId>
     <artifactId>org.openhab.binding.soundcloud</artifactId>
-    <version>1.2.4</version>
+    <version>1.2.5</version>
     <packaging>bundle</packaging>
 
     <name>openHAB SoundCloud Binding</name>

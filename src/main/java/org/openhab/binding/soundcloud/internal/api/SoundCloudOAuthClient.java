@@ -33,8 +33,7 @@ public class SoundCloudOAuthClient {
         return AUTH_URL
                 + "?client_id="    + encode(clientId)
                 + "&redirect_uri=" + encode(redirectUri)
-                + "&response_type=code"
-                + "&scope=non-expiring";
+                + "&response_type=code";
     }
 
     /** Exchanges a one-time authorization code for access + refresh tokens. */
@@ -49,13 +48,16 @@ public class SoundCloudOAuthClient {
         return postToken(body);
     }
 
-    /** Uses a refresh token to obtain a new access token. */
+    /**
+     * Uses a refresh token to obtain a new access token.
+     * Note: redirect_uri is intentionally omitted — RFC 6749 makes it optional
+     * for refresh grants and SoundCloud rejects the request if it is included.
+     */
     public SoundCloudTokenResponse refreshToken(String clientId, String clientSecret,
-            String redirectUri, String refreshToken) throws IOException, InterruptedException {
+            String refreshToken) throws IOException, InterruptedException {
         String body = "grant_type=refresh_token"
                 + "&client_id="     + encode(clientId)
                 + "&client_secret=" + encode(clientSecret)
-                + "&redirect_uri="  + encode(redirectUri)
                 + "&refresh_token=" + encode(refreshToken);
         logger.debug("Refreshing OAuth access token");
         return postToken(body);
