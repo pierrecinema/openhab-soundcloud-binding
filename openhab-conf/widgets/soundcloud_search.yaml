@@ -30,21 +30,25 @@ props:
       context: item
     - name: titleItem
       label: Title Item
+      description: String Item linked to soundcloud:account:...:player#title
       type: TEXT
       required: false
       context: item
     - name: artistItem
       label: Artist Item
+      description: String Item linked to soundcloud:account:...:player#artist
       type: TEXT
       required: false
       context: item
     - name: artworkItem
       label: Artwork URL Item
+      description: String Item linked to soundcloud:account:...:player#artwork-url
       type: TEXT
       required: false
       context: item
     - name: stateItem
       label: Playback State Item
+      description: String Item linked to soundcloud:account:...:player#playback-state
       type: TEXT
       required: false
       context: item
@@ -55,31 +59,7 @@ props:
       required: false
     - name: chromecastTargetItem
       label: Chromecast Target Item
-      description: String Item linked to soundcloud:account:...:player#chromecast-target
-      type: TEXT
-      required: false
-      context: item
-    - name: chromecastControlItem
-      label: Chromecast Control Item
-      description: Player Item linked to chromecast:...:control (Play/Pause)
-      type: TEXT
-      required: false
-      context: item
-    - name: chromecastStopItem
-      label: Chromecast Stop Item
-      description: Switch Item linked to chromecast:...:stop
-      type: TEXT
-      required: false
-      context: item
-    - name: chromecastVolumeItem
-      label: Chromecast Volume Item
-      description: Dimmer Item linked to chromecast:...:volume (0-100)
-      type: TEXT
-      required: false
-      context: item
-    - name: chromecastMuteItem
-      label: Chromecast Mute Item
-      description: Switch Item linked to chromecast:...:mute
+      description: String Item linked to soundcloud:account:...:player#chromecast-target (e.g. SC_CCTarget)
       type: TEXT
       required: false
       context: item
@@ -237,6 +217,7 @@ slots:
                             color: "#ff5500"
                             fontSize: 14px
                             display: block
+                      # Play / Pause / Stop / Mute
                       - component: f7-row
                         config:
                           style:
@@ -245,6 +226,7 @@ slots:
                             justifyContent: flex-start
                         slots:
                           default:
+                            # Play → sendet Stream-URL direkt an ausgewähltes Chromecast
                             - component: oh-button
                               config:
                                 iconF7: play_fill
@@ -254,6 +236,7 @@ slots:
                                 action: command
                                 actionItem: "=@@props.chromecastTargetItem"
                                 actionCommand: "=@@props.streamUrlItem"
+                            # Pause → SC_CC_Control (Routing-Regel leitet weiter)
                             - component: oh-button
                               config:
                                 iconF7: pause_fill
@@ -261,8 +244,9 @@ slots:
                                 style:
                                   color: orange
                                 action: command
-                                actionItem: "=props.chromecastControlItem"
+                                actionItem: SC_CC_Control
                                 actionCommand: PAUSE
+                            # Stop → SC_CC_Stop (Routing-Regel leitet weiter)
                             - component: oh-button
                               config:
                                 iconF7: stop_fill
@@ -270,18 +254,19 @@ slots:
                                 style:
                                   color: red
                                 action: command
-                                actionItem: "=props.chromecastStopItem"
+                                actionItem: SC_CC_Stop
                                 actionCommand: ON
+                            # Mute Toggle → SC_CC_Mute (Routing-Regel leitet weiter)
                             - component: oh-button
                               config:
-                                iconF7: "=(@@props.chromecastMuteItem === 'ON') ? 'speaker_slash_fill' : 'speaker_2_fill'"
+                                iconF7: "=(items['SC_CC_Mute'].state === 'ON') ? 'speaker_slash_fill' : 'speaker_2_fill'"
                                 iconSize: 32
                                 style:
-                                  color: "=(@@props.chromecastMuteItem === 'ON') ? '#ff5500' : 'gray'"
+                                  color: "=(items['SC_CC_Mute'].state === 'ON') ? '#ff5500' : 'gray'"
                                 action: command
-                                actionItem: "=props.chromecastMuteItem"
-                                actionCommand: "=(@@props.chromecastMuteItem === 'ON') ? 'OFF' : 'ON'"
-                      # Volume Slider
+                                actionItem: SC_CC_Mute
+                                actionCommand: "=(items['SC_CC_Mute'].state === 'ON') ? 'OFF' : 'ON'"
+                      # Volume Slider → SC_CC_Volume (Sync-Regel hält Wert aktuell)
                       - component: f7-row
                         config:
                           style:
@@ -297,7 +282,7 @@ slots:
                                 color: gray
                             - component: oh-slider
                               config:
-                                item: "=props.chromecastVolumeItem"
+                                item: SC_CC_Volume
                                 min: 0
                                 max: 100
                                 step: 5
