@@ -125,12 +125,10 @@ Add the `soundcloud_search` widget to a page and configure the following propert
 | `artistItem` | | String Item → `player#artist` |
 | `artworkItem` | | String Item → `player#artwork-url` |
 | `stateItem` | | String Item → `player#playback-state` |
-| `chromecastTargetItem` | | String Item → `player#chromecast-target` |
-| `chromecastTag` | | Tag on your Chromecast playuri items (default: `Chromecast`) |
-| `chromecastControlItem` | | Player Item → `chromecast:...:control` (Play/Pause) |
-| `chromecastStopItem` | | Switch Item → `chromecast:...:stop` |
-| `chromecastVolumeItem` | | Dimmer Item → `chromecast:...:volume` (0–100) |
-| `chromecastMuteItem` | | Switch Item → `chromecast:...:mute` |
+| `chromecastTargetItem` | | String Item linked to `player#chromecast-target` — stores the selected Chromecast (e.g. `SC_CCTarget`) |
+| `chromecastTag` | | Tag on your Chromecast `playuri` items (default: `Chromecast`) |
+
+> **Note:** Pause, Stop, Volume and Mute are routed via four fixed proxy items (`SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`) and a routing rule — see [Chromecast routing rule](#chromecast-routing-rule) below. No per-device configuration is needed in the widget.
 
 ---
 
@@ -154,22 +152,94 @@ Add the `soundcloud_search` widget to a page and configure the following propert
 
 ## Chromecast workflow
 
-The widget handles the full Chromecast flow without any rules:
-
 1. **Search** — type a term and press Enter
 2. **Select a track** — tap a result to load cover, title, artist and stream URL
-3. **Select a Chromecast** — tap a chip at the bottom of the card (chips are discovered automatically via item tags)
+3. **Select a Chromecast** — tap a chip at the bottom of the card (discovered automatically via item tags)
 4. **Press Play** — the stream URL is sent directly to the selected Chromecast
 5. **Volume / Mute / Pause / Stop** — dedicated buttons and slider in the widget
 
-If you prefer a rule-based approach (without the widget), you can still react to `player#stream-url` changes directly:
+---
+
+## Chromecast routing rule
+
+The widget's Pause, Stop, Volume and Mute buttons always send to four fixed proxy items (`SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`). A JS rule reads which Chromecast is currently selected and forwards the command to the correct device-specific item.
+
+**Why is a rule needed?**  
+Widget expressions can only use fixed item names. They cannot dynamically look up which control item belongs to the currently selected Chromecast. The routing rule bridges this gap — one rule handles all devices, no per-device widget configuration required.
+
+> **Planned for v1.3:** This logic will move into the binding itself, eliminating the need for any rule.
+
+### Setup
+
+**Step 1 — Create the four proxy items** (once, in Settings → Items or via `.items` file):
+
+```
+Player SC_CC_Control "SoundCloud CC Control"
+Switch SC_CC_Stop    "SoundCloud CC Stop"
+Dimmer SC_CC_Volume  "SoundCloud CC Volume"
+Switch SC_CC_Mute    "SoundCloud CC Mute"
+```
+
+Also create the target item and link it to the binding channel:
+
+```
+String SC_CCTarget "SoundCloud CC Target" { channel="soundcloud:account:myaccount:player#chromecast-target" }
+```
+
+**Step 2 — Create the routing rule** in Settings → Rules → + (ECMAScript 2021, triggered by command on each of the four proxy items):
 
 ```javascript
-// rules/soundcloud.js
-rules.when().item("SC_StreamURL").changed().then(event => {
-    items.getItem("YourChromecast_PlayURI").sendCommand(event.newState);
-}).build("SoundCloud → Chromecast");
+var triggerItem = event.itemName;
+var cmd         = event.receivedCommand.toString();
+var targetName  = items.getItem('SC_CCTarget').state;
+
+if (!targetName || targetName === 'NULL') return;
+
+// Map each Chromecast playuri item to its control items.
+// Add a new entry here whenever you add a Chromecast device.
+var MAPPING = {
+  'BuroCast_Play_URI': {
+    control : 'BuroCast_Media_Control',
+    stop    : 'BuroCast_Stop',
+    volume  : 'BuroCast_Volume',
+    mute    : 'BuroCast_Mute'
+  },
+  'Hifigruppe_Play_URI': {
+    control : 'Hifigruppe_Media_Control',
+    stop    : 'Hifigruppe_Stop',
+    volume  : 'Hifigruppe_Volume',
+    mute    : 'Hifigruppe_Mute'
+  }
+  // Add more devices here:
+  // 'YourDevice_Play_URI': { control: '...', stop: '...', volume: '...', mute: '...' }
+};
+
+var map = MAPPING[targetName];
+if (!map) { logger.warn('SC Router: no mapping for ' + targetName); return; }
+
+var destName = null;
+if      (triggerItem === 'SC_CC_Control') destName = map.control;
+else if (triggerItem === 'SC_CC_Stop')    destName = map.stop;
+else if (triggerItem === 'SC_CC_Volume')  destName = map.volume;
+else if (triggerItem === 'SC_CC_Mute')    destName = map.mute;
+
+if (destName) {
+  items.getItem(destName).sendCommand(cmd);
+  logger.info('SC Router: ' + triggerItem + ' → ' + destName + ' (' + cmd + ')');
+}
 ```
+
+Configure the rule triggers as **Item Command** on: `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`.
+
+**Step 3 — Configure the widget:**
+
+- `chromecastTargetItem` = `SC_CCTarget`
+- All other Chromecast props: leave empty
+
+### Adding a new Chromecast
+
+1. Tag the device's `playuri` item with `Chromecast` — it appears automatically as a chip in the widget
+2. Add one entry to the `MAPPING` object in the routing rule with the item names for `control`, `stop`, `volume` and `mute`
 
 ---
 
