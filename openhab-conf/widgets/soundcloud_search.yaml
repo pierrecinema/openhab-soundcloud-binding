@@ -274,7 +274,7 @@ slots:
                       - component: oh-list-item
                         config:
                           title: "=loop.cc.label"
-                          action: command
+                          action: "=(props.streamUrlItem && @@props.streamUrlItem && @@props.streamUrlItem !== 'NULL') ? 'command' : 'none'"
                           actionItem: "=loop.cc.name"
                           actionCommand: "=@@props.streamUrlItem"
                         slots:
