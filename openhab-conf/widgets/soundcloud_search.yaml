@@ -53,6 +53,12 @@ props:
       description: "Tag on your Chromecast playuri items (default: Chromecast)"
       type: TEXT
       required: false
+    - name: chromecastTargetItem
+      label: Chromecast Target Item
+      description: String Item linked to soundcloud:account:...:player#chromecast-target
+      type: TEXT
+      required: false
+      context: item
     - name: chromecastControlItem
       label: Chromecast Control Item
       description: Player Item linked to chromecast:...:control (for Pause/Stop)
@@ -224,16 +230,18 @@ slots:
                           style:
                             gap: 8px
                             marginTop: 12px
+                            justifyContent: flex-start
                         slots:
                           default:
-                            - component: f7-button
+                            - component: oh-button
                               config:
                                 iconF7: play_fill
                                 iconSize: 32
-                                color: green
+                                style:
+                                  color: green
                                 action: command
-                                actionItem: "=props.stateItem"
-                                actionCommand: PLAY
+                                actionItem: "=@@props.chromecastTargetItem"
+                                actionCommand: "=@@props.streamUrlItem"
                             - component: oh-button
                               config:
                                 iconF7: pause_fill
@@ -315,14 +323,17 @@ slots:
                       - component: oh-list-item
                         config:
                           title: "=loop.cc.label"
-                          action: "=(props.streamUrlItem && @@props.streamUrlItem && @@props.streamUrlItem !== 'NULL') ? 'command' : 'none'"
-                          actionItem: "=loop.cc.name"
-                          actionCommand: "=@@props.streamUrlItem"
+                          action: command
+                          actionItem: "=props.chromecastTargetItem"
+                          actionCommand: "=loop.cc.name"
+                          style:
+                            fontWeight: "=(@@props.chromecastTargetItem === loop.cc.name) ? '700' : '400'"
+                            color: "=(@@props.chromecastTargetItem === loop.cc.name) ? '#ff5500' : 'inherit'"
                         slots:
                           after:
                             - component: oh-icon
                               config:
-                                icon: iconify:mdi:cast
-                                color: "#ff5500"
+                                icon: "=(@@props.chromecastTargetItem === loop.cc.name) ? 'iconify:mdi:cast-connected' : 'iconify:mdi:cast'"
+                                color: "=(@@props.chromecastTargetItem === loop.cc.name) ? '#ff5500' : '#aaa'"
                                 width: 24px
                                 height: 24px
