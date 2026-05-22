@@ -5,6 +5,7 @@ import static org.openhab.binding.soundcloud.internal.SoundCloudBindingConstants
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
@@ -52,6 +53,7 @@ public class SoundCloudHandler extends BaseThingHandler {
     private @Nullable ScheduledFuture<?> tokenRefreshJob;
     private boolean servletRegistered = false;
     private String playbackState = "STOPPED";
+    private final AtomicInteger searchGeneration = new AtomicInteger(0);
 
     public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService) {
         super(thing);
@@ -264,9 +266,18 @@ public class SoundCloudHandler extends BaseThingHandler {
     public void search(String query) {
         SoundCloudApiClient client = apiClient;
         if (client == null) return;
+        // Neue Generation: überholt eine eventuell noch laufende ältere Suche
+        int gen = searchGeneration.incrementAndGet();
+        // Alte Ergebnisse sofort leeren, damit nie veraltete Results stehen bleiben
+        updateState(CHANNEL_SEARCH_RESULTS, new StringType("[]"));
         scheduler.submit(() -> {
             try {
                 List<SoundCloudTrack> tracks = client.searchTracks(query);
+                // Verwerfen falls zwischenzeitlich eine neuere Suche gestartet wurde
+                if (gen != searchGeneration.get()) {
+                    logger.debug("Suche '{}' überholt durch neuere Anfrage — verworfen", query);
+                    return;
+                }
                 JsonArray arr = new JsonArray();
                 for (SoundCloudTrack t : tracks) {
                     JsonObject o = new JsonObject();
@@ -279,7 +290,8 @@ public class SoundCloudHandler extends BaseThingHandler {
                 }
                 updateState(CHANNEL_SEARCH_RESULTS, new StringType(arr.toString()));
             } catch (Exception e) {
-                logger.warn("Suche fehlgeschlagen: {}", e.getMessage());
+                logger.warn("Suche '{}' fehlgeschlagen: {}", query, e.getMessage());
+                // Ergebnisse wurden bereits geleert — kein Rückfall auf alte Results
             }
         });
     }
