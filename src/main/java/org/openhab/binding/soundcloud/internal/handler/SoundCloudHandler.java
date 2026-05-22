@@ -38,9 +38,10 @@ import com.google.gson.JsonObject;
 @NonNullByDefault
 public class SoundCloudHandler extends BaseThingHandler {
 
-    private static final String CALLBACK_PATH     = "/soundcloud/callback";
-    private static final String STORAGE_ACCESS    = "access_token";
-    private static final String STORAGE_REFRESH   = "refresh_token";
+    private static final String CALLBACK_PATH      = "/soundcloud/callback";
+    private static final String STORAGE_ACCESS     = "access_token";
+    private static final String STORAGE_REFRESH    = "refresh_token";
+    private static final String STORAGE_EXPIRES_AT = "expires_at"; // Unix-Timestamp (Sekunden)
 
     private final Logger logger = LoggerFactory.getLogger(SoundCloudHandler.class);
     private final SoundCloudOAuthClient oauthClient = new SoundCloudOAuthClient();
@@ -132,8 +133,7 @@ public class SoundCloudHandler extends BaseThingHandler {
         try {
             SoundCloudTokenResponse tokens = oauthClient.exchangeCode(
                     config.clientId, config.clientSecret, config.redirectUri, code);
-            storage.put(STORAGE_ACCESS,  tokens.accessToken);
-            storage.put(STORAGE_REFRESH, tokens.refreshToken);
+            saveTokens(tokens);
             apiClient = new SoundCloudApiClient(config.clientId, config.webClientId, tokens.accessToken);
             updateStatus(ThingStatus.ONLINE);
             scheduleTokenRefresh(config, tokens.expiresIn);
@@ -154,7 +154,7 @@ public class SoundCloudHandler extends BaseThingHandler {
             client.searchTracks("test");
             updateStatus(ThingStatus.ONLINE);
             if (refreshToken != null && !refreshToken.isBlank()) {
-                scheduleTokenRefresh(config, 3540);
+                scheduleTokenRefresh(config, remainingTokenSeconds());
             }
         } catch (Exception e) {
             if (refreshToken != null && !refreshToken.isBlank()) {
@@ -165,6 +165,36 @@ public class SoundCloudHandler extends BaseThingHandler {
                 storage.remove(STORAGE_REFRESH);
                 registerServlet(config);
             }
+        }
+    }
+
+    /** Speichert Access-Token, Refresh-Token und berechneten Ablaufzeitpunkt. */
+    private void saveTokens(SoundCloudTokenResponse tokens) {
+        storage.put(STORAGE_ACCESS,  tokens.accessToken);
+        storage.put(STORAGE_REFRESH, tokens.refreshToken);
+        long expiresAt = System.currentTimeMillis() / 1000L + tokens.expiresIn;
+        storage.put(STORAGE_EXPIRES_AT, String.valueOf(expiresAt));
+        logger.debug("Tokens gespeichert, läuft ab in {}s (um {})", tokens.expiresIn, expiresAt);
+    }
+
+    /**
+     * Berechnet die verbleibende Gültigkeit des gespeicherten Access-Tokens.
+     * Gibt mindestens 60 Sekunden zurück (sofortiger Refresh wenn Token fast/schon abgelaufen).
+     */
+    private long remainingTokenSeconds() {
+        String stored = storage.get(STORAGE_EXPIRES_AT);
+        if (stored == null) return 3540; // kein Zeitstempel → konservativ 59 min
+        try {
+            long expiresAt = Long.parseLong(stored);
+            long remaining = expiresAt - System.currentTimeMillis() / 1000L;
+            if (remaining <= 120) {
+                logger.info("Token läuft in {}s ab — sofortiger Refresh", remaining);
+                return 60; // fast abgelaufen → sofort refreshen
+            }
+            logger.debug("Token läuft in {}s ab — Refresh in {}s geplant", remaining, remaining - 60);
+            return remaining - 60; // 60s Puffer vor Ablauf
+        } catch (NumberFormatException e) {
+            return 3540;
         }
     }
 
@@ -182,8 +212,7 @@ public class SoundCloudHandler extends BaseThingHandler {
         try {
             SoundCloudTokenResponse tokens = oauthClient.refreshToken(
                     config.clientId, config.clientSecret, refreshToken);
-            storage.put(STORAGE_ACCESS,  tokens.accessToken);
-            storage.put(STORAGE_REFRESH, tokens.refreshToken);
+            saveTokens(tokens);
             SoundCloudApiClient client = apiClient;
             if (client != null) {
                 client.setOauthToken(tokens.accessToken);
