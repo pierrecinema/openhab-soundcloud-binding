@@ -3,7 +3,8 @@
 A community binding that connects openHAB to SoundCloud.  
 Search tracks, view cover art and stream audio directly to a Chromecast — all from a single MainUI widget.
 
-> **Status: Alpha** — core features are working. Feedback welcome in the openHAB community forum.
+> **Status: Beta** — core features are working. Feedback welcome in the openHAB community forum.
+> https://community.openhab.org/t/openhab-soundcloud-binding-new/169324/2
 
 ---
 
