@@ -8,7 +8,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ---
 
-## Features (v1.2.5)
+## Features (v1.2.9)
 
 - **Search** tracks by keyword — results appear instantly in the widget list
 - **Cover art** at 500 × 500 px displayed alongside title and artist
@@ -47,7 +47,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ### 1. Download the JAR
 
-Download `org.openhab.binding.soundcloud-1.2.3.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
+Download `org.openhab.binding.soundcloud-1.2.9.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
 
 openHAB detects and loads the bundle automatically — no restart needed. Check **Settings → Bindings** to confirm it appears.
 
@@ -64,7 +64,7 @@ openHAB detects and loads the bundle automatically — no restart needed. Check 
 git clone https://github.com/pierrecinema/openhab-soundcloud-binding.git
 cd openhab-soundcloud-binding
 mvn clean package -DskipTests
-# copy target/org.openhab.binding.soundcloud-1.2.3.jar to your addons/ folder
+# copy target/org.openhab.binding.soundcloud-1.2.9.jar to your addons/ folder
 ```
 
 ---
