@@ -55,6 +55,8 @@ public class SoundCloudHandler extends BaseThingHandler {
     private boolean servletRegistered = false;
     private String playbackState = "STOPPED";
     private final AtomicInteger searchGeneration = new AtomicInteger(0);
+    private int refreshRetryCount = 0;
+    private static final int MAX_REFRESH_RETRIES = 3;
 
     public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService) {
         super(thing);
@@ -213,6 +215,7 @@ public class SoundCloudHandler extends BaseThingHandler {
             SoundCloudTokenResponse tokens = oauthClient.refreshToken(
                     config.clientId, config.clientSecret, refreshToken);
             saveTokens(tokens);
+            refreshRetryCount = 0;
             SoundCloudApiClient client = apiClient;
             if (client != null) {
                 client.setOauthToken(tokens.accessToken);
@@ -223,15 +226,29 @@ public class SoundCloudHandler extends BaseThingHandler {
             scheduleTokenRefresh(config, tokens.expiresIn);
             logger.info("OAuth-Token erfolgreich erneuert");
         } catch (Exception e) {
-            logger.warn("Token-Refresh fehlgeschlagen: {} — prüfe ob Access-Token noch gültig", e.getMessage());
+            boolean isTokenInvalid = e.getMessage() != null && e.getMessage().contains("HTTP 400");
+
+            if (!isTokenInvalid && refreshRetryCount < MAX_REFRESH_RETRIES) {
+                // Netzwerkfehler oder temporärer SoundCloud-Fehler → retry mit Backoff
+                refreshRetryCount++;
+                long retryDelay = refreshRetryCount == 1 ? 60 : refreshRetryCount == 2 ? 300 : 900;
+                logger.warn("Token-Refresh fehlgeschlagen (Versuch {}/{}): {} — retry in {}s",
+                        refreshRetryCount, MAX_REFRESH_RETRIES, e.getMessage(), retryDelay);
+                scheduleTokenRefresh(config, retryDelay);
+                return;
+            }
+
+            logger.warn("Token-Refresh endgültig fehlgeschlagen: {} — prüfe ob Access-Token noch gültig",
+                    e.getMessage());
+            refreshRetryCount = 0;
+
             // Erst prüfen ob der bestehende Access-Token noch funktioniert,
             // bevor Tokens gelöscht und Re-Auth verlangt wird.
-            String existingAccess = storage.get(STORAGE_ACCESS);
             SoundCloudApiClient client = apiClient;
-            if (existingAccess != null && client != null) {
+            if (client != null) {
                 try {
                     client.searchTracks("test");
-                    logger.info("Access-Token noch gültig — bleibe online, Refresh-Retry in 5 Minuten");
+                    logger.info("Access-Token noch gültig — bleibe online, nächster Refresh-Versuch in 5 Minuten");
                     updateStatus(ThingStatus.ONLINE);
                     scheduleTokenRefresh(config, 300);
                     return;
@@ -241,6 +258,7 @@ public class SoundCloudHandler extends BaseThingHandler {
             }
             storage.remove(STORAGE_ACCESS);
             storage.remove(STORAGE_REFRESH);
+            storage.remove(STORAGE_EXPIRES_AT);
             registerServlet(config);
         }
     }
