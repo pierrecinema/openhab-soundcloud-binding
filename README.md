@@ -88,7 +88,10 @@ Thing soundcloud:account:myaccount "SoundCloud" [
 | `clientId` | ✅ | Client ID from [soundcloud.com/you/apps](https://soundcloud.com/you/apps) |
 | `clientSecret` | ✅ | Client Secret from your registered app |
 | `redirectUri` | ✅ | Must match exactly what is registered in your SoundCloud app |
+
+
 | `webClientId` | optional | Internal SoundCloud web client ID for api-v2 (default value included) |
+Step-by-Step Guide to Finding the Current Client IDOpen the website: Go to the official SoundCloud website in any desktop browser.Open developer tools: Press F12 (Ctrl + Shift + I on Windows/Linux or Cmd + Opt + I on Mac).Go to network tab: Click on the Network tab inside the developer tools window.Apply search filter: Type client_id into the filter search box to narrow down the requests.Refresh and play: Reload the page (F5) and play any track if no results appear.Copy your ID: Click on a filtered XHR request (e.g., an api-v2.soundcloud.com/... URL).Extract the code: Find the client_id= parameter inside the URL to copy the 32-character alphanumeric code.
 
 ### OAuth authorisation
 
