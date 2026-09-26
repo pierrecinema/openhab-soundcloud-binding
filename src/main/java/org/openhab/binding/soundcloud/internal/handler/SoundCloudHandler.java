@@ -150,30 +150,20 @@ public class SoundCloudHandler extends BaseThingHandler {
 
     private void startWithToken(SoundCloudConfiguration config, String accessToken,
             @Nullable String refreshToken) {
-        SoundCloudApiClient client = new SoundCloudApiClient(config.clientId, config.webClientId, accessToken);
-        apiClient = client;
-        try {
-            client.searchTracks("test");
-            updateStatus(ThingStatus.ONLINE);
-            if (refreshToken != null && !refreshToken.isBlank()) {
-                scheduleTokenRefresh(config, remainingTokenSeconds());
-            }
-        } catch (Exception e) {
-            if (refreshToken != null && !refreshToken.isBlank()) {
-                logger.debug("Token abgelehnt — versuche Refresh");
-                refreshAccessToken(config, refreshToken);
-            } else {
-                storage.remove(STORAGE_ACCESS);
-                storage.remove(STORAGE_REFRESH);
-                registerServlet(config);
-            }
+        apiClient = new SoundCloudApiClient(config.clientId, config.webClientId, accessToken);
+        updateStatus(ThingStatus.ONLINE);
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            scheduleTokenRefresh(config, remainingTokenSeconds());
         }
+        logger.debug("Gespeicherten OAuth-Token geladen — Refresh-Planung läuft");
     }
 
     /** Speichert Access-Token, Refresh-Token und berechneten Ablaufzeitpunkt. */
     private void saveTokens(SoundCloudTokenResponse tokens) {
-        storage.put(STORAGE_ACCESS,  tokens.accessToken);
-        storage.put(STORAGE_REFRESH, tokens.refreshToken);
+        storage.put(STORAGE_ACCESS, tokens.accessToken);
+        if (tokens.refreshToken != null && !tokens.refreshToken.isBlank()) {
+            storage.put(STORAGE_REFRESH, tokens.refreshToken);
+        }
         long expiresAt = System.currentTimeMillis() / 1000L + tokens.expiresIn;
         storage.put(STORAGE_EXPIRES_AT, String.valueOf(expiresAt));
         logger.debug("Tokens gespeichert, läuft ab in {}s (um {})", tokens.expiresIn, expiresAt);
@@ -238,28 +228,25 @@ public class SoundCloudHandler extends BaseThingHandler {
                 return;
             }
 
-            logger.warn("Token-Refresh endgültig fehlgeschlagen: {} — prüfe ob Access-Token noch gültig",
-                    e.getMessage());
             refreshRetryCount = 0;
 
-            // Erst prüfen ob der bestehende Access-Token noch funktioniert,
-            // bevor Tokens gelöscht und Re-Auth verlangt wird.
-            SoundCloudApiClient client = apiClient;
-            if (client != null) {
-                try {
-                    client.searchTracks("test");
-                    logger.info("Access-Token noch gültig — bleibe online, nächster Refresh-Versuch in 5 Minuten");
-                    updateStatus(ThingStatus.ONLINE);
-                    scheduleTokenRefresh(config, 300);
-                    return;
-                } catch (Exception e2) {
-                    logger.debug("Access-Token ebenfalls abgelaufen: {}", e2.getMessage());
-                }
+            if (isTokenInvalid) {
+                // HTTP 400 = Refresh-Token wurde von SoundCloud widerrufen → Neu-Autorisierung nötig
+                logger.warn("Refresh-Token ungültig (HTTP 400) — Neu-Autorisierung erforderlich");
+                storage.remove(STORAGE_ACCESS);
+                storage.remove(STORAGE_REFRESH);
+                storage.remove(STORAGE_EXPIRES_AT);
+                registerServlet(config);
+            } else {
+                // Alle Retries aufgebraucht, aber kein HTTP 400 → Netzwerkproblem oder temporärer SoundCloud-Fehler
+                // Token bleibt erhalten — nächster Versuch in 15 Minuten
+                logger.warn("Token-Refresh nach {} Versuchen fehlgeschlagen ({}). "
+                        + "Token bleibt gespeichert — nächster Versuch in 15 Minuten",
+                        MAX_REFRESH_RETRIES, e.getMessage());
+                updateStatus(ThingStatus.OFFLINE, ThingStatusDetail.COMMUNICATION_ERROR,
+                        "Token-Refresh fehlgeschlagen — nächster Versuch in 15 Minuten");
+                scheduleTokenRefresh(config, 900);
             }
-            storage.remove(STORAGE_ACCESS);
-            storage.remove(STORAGE_REFRESH);
-            storage.remove(STORAGE_EXPIRES_AT);
-            registerServlet(config);
         }
     }
 
