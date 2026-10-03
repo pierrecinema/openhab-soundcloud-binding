@@ -51,6 +51,7 @@
             <channel id="artist"         typeId="artist"/>
             <channel id="artwork-url"    typeId="artwork-url"/>
             <channel id="duration"       typeId="duration"/>
+            <channel id="elapsed-time"   typeId="elapsed-time"/>
             <channel id="stream-url"     typeId="stream-url"/>
             <channel id="playback-state"      typeId="playback-state"/>
             <channel id="chromecast-target"  typeId="chromecast-target"/>
@@ -108,6 +109,13 @@
         <item-type>Number</item-type>
         <label>Duration</label>
         <description>Track duration in seconds</description>
+        <state readOnly="true" pattern="%.0f s"/>
+    </channel-type>
+
+    <channel-type id="elapsed-time">
+        <item-type>Number</item-type>
+        <label>Elapsed Time</label>
+        <description>Elapsed playback time in seconds — updates every second while playing, resets on new track or stop</description>
         <state readOnly="true" pattern="%.0f s"/>
     </channel-type>
 

@@ -8,7 +8,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ---
 
-## Features (v1.3.0)
+## Features (v1.4.1)
 
 - **Search** tracks by keyword — results appear instantly in the widget list
 - **Cover art** at 500 × 500 px displayed alongside title and artist
@@ -18,6 +18,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 - **Pause / Stop / Mute** buttons mapped to the correct Chromecast binding channels
 - **Playback state** channel (PLAYING / PAUSED / STOPPED)
 - **OAuth 2.0** authentication — authorise once in the browser, tokens are stored and auto-refreshed
+- **Progress bar** — elapsed time / total duration shown in the widget, updates every second
 
 ---
 
@@ -47,7 +48,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ### 1. Download the JAR
 
-Download `org.openhab.binding.soundcloud-1.3.0.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
+Download `org.openhab.binding.soundcloud-1.4.1.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
 
 openHAB detects and loads the bundle automatically — no restart needed. Check **Settings → Bindings** to confirm it appears.
 
@@ -108,6 +109,7 @@ String   SC_Title         "Titel [%s]"      { channel="soundcloud:account:myacco
 String   SC_Artist        "Artist [%s]"     { channel="soundcloud:account:myaccount:player#artist" }
 String   SC_ArtworkURL    "Cover [%s]"      { channel="soundcloud:account:myaccount:player#artwork-url" }
 Number   SC_Duration      "Dauer [%.0f s]"  { channel="soundcloud:account:myaccount:player#duration" }
+Number   SC_Elapsed       "Elapsed [%.0f s]"{ channel="soundcloud:account:myaccount:player#elapsed-time" }
 String   SC_StreamURL     "Stream URL [%s]" { channel="soundcloud:account:myaccount:player#stream-url" }
 String   SC_State         "Status [%s]"     { channel="soundcloud:account:myaccount:player#playback-state" }
 String   SC_CCTarget      "CC Target [%s]"  { channel="soundcloud:account:myaccount:player#chromecast-target" }
@@ -142,6 +144,8 @@ Add the `soundcloud_search` widget to a page and configure the following propert
 | `stateItem` | | String Item → `player#playback-state` |
 | `chromecastTargetItem` | | String Item linked to `player#chromecast-target` — stores the selected Chromecast (e.g. `SC_CCTarget`) |
 | `chromecastTag` | | Tag on your Chromecast `playuri` items (default: `Chromecast`) |
+| `elapsedItem` | | Number Item linked to `player#elapsed-time` — enables the progress bar |
+| `durationItem` | | Number Item linked to `player#duration` — required for the progress bar |
 
 > **Note:** Pause, Stop, Volume and Mute are routed via four fixed proxy items (`SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`) and a routing rule — see [Chromecast routing rule](#chromecast-routing-rule) below. No per-device configuration is needed in the widget.
 
@@ -157,6 +161,7 @@ Add the `soundcloud_search` widget to a page and configure the following propert
 | `player#artist` | String | R | Current track artist / uploader |
 | `player#artwork-url` | String | R | 500×500 px cover art URL |
 | `player#duration` | Number | R | Track duration in seconds |
+| `player#elapsed-time` | Number | R | Elapsed playback time in seconds — updates every second, resets on new track |
 | `player#stream-url` | String | R | Direct MP3 URL (resolved via api-v2 transcodings) |
 | `player#playback-state` | String | RW | PLAYING / PAUSED / STOPPED |
 | `player#chromecast-target` | String | RW | Name of the selected Chromecast playuri item |
@@ -266,6 +271,7 @@ Configure the rule triggers as **Item Command** on: `SC_CC_Control`, `SC_CC_Stop
 | v1.1.x | ✅ done | Widget: search results list, track selection, cover art |
 | v1.2.x | ✅ done | Chromecast integration: chip selection, play/pause/stop/mute/volume |
 | v1.3.x | ✅ done | Auth resilience: token never deleted on transient errors; immediate ONLINE on restart |
+| v1.4.1 | ✅ done | Progress bar: elapsed time channel, MM:SS display in widget |
 | v1.4.x | planned | Auto-cast when track changes (no manual Play press needed) |
 | v1.4.x | planned | Playlist queue: next / previous track navigation |
 | v1.5.x | planned | Progress bar / elapsed time display |

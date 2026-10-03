@@ -52,11 +52,14 @@ public class SoundCloudHandler extends BaseThingHandler {
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
     private @Nullable ScheduledFuture<?> tokenRefreshJob;
+    private @Nullable ScheduledFuture<?> progressJob;
     private boolean servletRegistered = false;
     private String playbackState = "STOPPED";
     private final AtomicInteger searchGeneration = new AtomicInteger(0);
     private int refreshRetryCount = 0;
     private static final int MAX_REFRESH_RETRIES = 3;
+    private int elapsedSeconds = 0;
+    private int trackDurationSeconds = 0;
 
     public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService) {
         super(thing);
@@ -258,7 +261,33 @@ public class SoundCloudHandler extends BaseThingHandler {
             job.cancel(true);
             tokenRefreshJob = null;
         }
+        stopProgressTimer();
         apiClient = null;
+    }
+
+    private void startProgressTimer() {
+        stopProgressTimer();
+        progressJob = scheduler.scheduleWithFixedDelay(() -> {
+            elapsedSeconds++;
+            updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
+            if (trackDurationSeconds > 0 && elapsedSeconds >= trackDurationSeconds) {
+                stopProgressTimer();
+            }
+        }, 1, 1, TimeUnit.SECONDS);
+    }
+
+    private void stopProgressTimer() {
+        ScheduledFuture<?> job = progressJob;
+        if (job != null) {
+            job.cancel(false);
+            progressJob = null;
+        }
+    }
+
+    private void resetProgress() {
+        stopProgressTimer();
+        elapsedSeconds = 0;
+        updateState(CHANNEL_ELAPSED_TIME, new DecimalType(0));
     }
 
     // -------------------------------------------------------------------------
@@ -345,7 +374,10 @@ public class SoundCloudHandler extends BaseThingHandler {
                 currentTrack = track;
                 currentStreamUrl = streamUrl;
                 playbackState = "PLAYING";
+                trackDurationSeconds = (int) (track.duration / 1000);
                 applyTrackToChannels(track, streamUrl);
+                resetProgress();
+                startProgressTimer();
             } catch (Exception e) {
                 logger.warn("Track {} konnte nicht geladen werden: {}", trackId, e.getMessage());
             }
@@ -376,11 +408,13 @@ public class SoundCloudHandler extends BaseThingHandler {
                 if (currentTrack != null) {
                     playbackState = "PLAYING";
                     updateState(CHANNEL_PLAYBACK_STATE, new StringType("PLAYING"));
+                    startProgressTimer();
                 }
                 break;
             case "PAUSE":
                 playbackState = "PAUSED";
                 updateState(CHANNEL_PLAYBACK_STATE, new StringType("PAUSED"));
+                stopProgressTimer();
                 break;
             case "STOP":
                 playbackState = "STOPPED";
@@ -390,6 +424,7 @@ public class SoundCloudHandler extends BaseThingHandler {
                 updateState(CHANNEL_STREAM_URL, new StringType(""));
                 updateState(CHANNEL_TITLE, new StringType(""));
                 updateState(CHANNEL_ARTIST, new StringType(""));
+                resetProgress();
                 break;
         }
     }

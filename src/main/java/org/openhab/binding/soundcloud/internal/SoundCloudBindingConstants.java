@@ -20,6 +20,7 @@ public class SoundCloudBindingConstants {
     public static final String CHANNEL_PLAYBACK_STATE = "player#playback-state";
     public static final String CHANNEL_TRACK_ID       = "player#track-id";
     public static final String CHANNEL_PLAYLIST_ID    = "player#playlist-id";
+    public static final String CHANNEL_ELAPSED_TIME   = "player#elapsed-time";
 
     // Search channel group + channels
     public static final String CHANNEL_SEARCH_QUERY      = "search#query";
