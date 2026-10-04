@@ -16,7 +16,10 @@ import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudPlaylist;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudTokenResponse;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudTrack;
 import org.openhab.binding.soundcloud.internal.config.SoundCloudConfiguration;
+import org.openhab.core.events.EventPublisher;
+import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.RewindFastforwardType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
@@ -47,6 +50,7 @@ public class SoundCloudHandler extends BaseThingHandler {
     private final SoundCloudOAuthClient oauthClient = new SoundCloudOAuthClient();
     private final Storage<String> storage;
     private final HttpService httpService;
+    private final EventPublisher eventPublisher;
     private @Nullable SoundCloudApiClient apiClient;
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
@@ -60,10 +64,12 @@ public class SoundCloudHandler extends BaseThingHandler {
     private volatile int elapsedSeconds = 0;
     private int trackDurationSeconds = 0;
 
-    public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService) {
+    public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService,
+            EventPublisher eventPublisher) {
         super(thing);
         this.storage = storageService.getStorage(thing.getUID().toString());
         this.httpService = httpService;
+        this.eventPublisher = eventPublisher;
     }
 
     // -------------------------------------------------------------------------
@@ -317,8 +323,7 @@ public class SoundCloudHandler extends BaseThingHandler {
                 updateState(CHANNEL_CHROMECAST_TARGET, new StringType(command.toString()));
                 break;
             case CHANNEL_ELAPSED_TIME:
-                // Elapsed-Time ist read-only — Commands werden ignoriert (Chromecast-Streams nicht seekbar)
-                logger.debug("Seek-Command ignoriert (Chromecast-Streams nicht seekbar): {}", command);
+                handleSeek(command.toString());
                 break;
             default:
                 logger.debug("Kein Handler für Channel {}", channelUID.getId());
@@ -430,6 +435,28 @@ public class SoundCloudHandler extends BaseThingHandler {
                 resetProgress();
                 break;
         }
+    }
+
+    private void handleSeek(String commandStr) {
+        SoundCloudConfiguration config = getConfigAs(SoundCloudConfiguration.class);
+        if (config.chromecastControlItem.isBlank()) {
+            logger.debug("Seek ignoriert — kein chromecastControlItem konfiguriert");
+            return;
+        }
+        long target;
+        try {
+            target = Long.parseLong(commandStr.trim());
+        } catch (NumberFormatException e) {
+            logger.debug("Seek: ungültiger Wert '{}'", commandStr);
+            return;
+        }
+        long diff = target - elapsedSeconds;
+        if (diff == 0) return;
+        RewindFastforwardType cmd = diff > 0 ? RewindFastforwardType.FASTFORWARD : RewindFastforwardType.REWIND;
+        logger.info("Seek: {} → {} (diff {}s) → sende {} an {}", elapsedSeconds, target, diff, cmd, config.chromecastControlItem);
+        eventPublisher.post(ItemEventFactory.createCommandEvent(config.chromecastControlItem, cmd));
+        elapsedSeconds = (int) target;
+        updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
     }
 
     private void applyTrackToChannels(SoundCloudTrack track, String streamUrl) {

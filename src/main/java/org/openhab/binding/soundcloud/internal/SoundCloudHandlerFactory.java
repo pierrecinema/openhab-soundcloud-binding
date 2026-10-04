@@ -7,6 +7,7 @@ import java.util.Set;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.soundcloud.internal.handler.SoundCloudHandler;
+import org.openhab.core.events.EventPublisher;
 import org.openhab.core.storage.StorageService;
 import org.openhab.core.thing.Thing;
 import org.openhab.core.thing.ThingTypeUID;
@@ -26,12 +27,15 @@ public class SoundCloudHandlerFactory extends BaseThingHandlerFactory {
 
     private final StorageService storageService;
     private final HttpService httpService;
+    private final EventPublisher eventPublisher;
 
     @Activate
     public SoundCloudHandlerFactory(@Reference StorageService storageService,
-            @Reference HttpService httpService) {
+            @Reference HttpService httpService,
+            @Reference EventPublisher eventPublisher) {
         this.storageService = storageService;
         this.httpService = httpService;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -42,7 +46,7 @@ public class SoundCloudHandlerFactory extends BaseThingHandlerFactory {
     @Override
     protected @Nullable ThingHandler createHandler(Thing thing) {
         if (THING_TYPE_ACCOUNT.equals(thing.getThingTypeUID())) {
-            return new SoundCloudHandler(thing, storageService, httpService);
+            return new SoundCloudHandler(thing, storageService, httpService, eventPublisher);
         }
         return null;
     }
