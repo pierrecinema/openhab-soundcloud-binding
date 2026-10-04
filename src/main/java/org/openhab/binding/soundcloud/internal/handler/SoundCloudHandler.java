@@ -438,11 +438,6 @@ public class SoundCloudHandler extends BaseThingHandler {
     }
 
     private void handleSeek(String commandStr) {
-        SoundCloudConfiguration config = getConfigAs(SoundCloudConfiguration.class);
-        if (config.chromecastControlItem.isBlank()) {
-            logger.debug("Seek ignoriert — kein chromecastControlItem konfiguriert");
-            return;
-        }
         long target;
         try {
             target = Long.parseLong(commandStr.trim());
@@ -453,8 +448,9 @@ public class SoundCloudHandler extends BaseThingHandler {
         long diff = target - elapsedSeconds;
         if (diff == 0) return;
         RewindFastforwardType cmd = diff > 0 ? RewindFastforwardType.FASTFORWARD : RewindFastforwardType.REWIND;
-        logger.info("Seek: {} → {} (diff {}s) → sende {} an {}", elapsedSeconds, target, diff, cmd, config.chromecastControlItem);
-        eventPublisher.post(ItemEventFactory.createCommandEvent(config.chromecastControlItem, cmd));
+        // Sende über SC_CC_Control — die Router-Rule leitet an das aktive Gerät weiter
+        logger.info("Seek: {} → {} (diff {}s) → sende {} an SC_CC_Control", elapsedSeconds, target, diff, cmd);
+        eventPublisher.post(ItemEventFactory.createCommandEvent("SC_CC_Control", cmd));
         elapsedSeconds = (int) target;
         updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
     }
