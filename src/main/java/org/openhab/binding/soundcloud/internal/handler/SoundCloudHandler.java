@@ -19,6 +19,7 @@ import org.openhab.binding.soundcloud.internal.config.SoundCloudConfiguration;
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.RewindFastforwardType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
@@ -330,23 +331,36 @@ public class SoundCloudHandler extends BaseThingHandler {
             case CHANNEL_ELAPSED_TIME:
                 try {
                     int seekTo = (int) Double.parseDouble(command.toString());
+                    final int currentElapsed = elapsedSeconds;
                     elapsedSeconds = trackDurationSeconds > 0
                             ? Math.max(0, Math.min(seekTo, trackDurationSeconds))
                             : Math.max(0, seekTo);
                     updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
-                    // Timer für 3 Sekunden pausieren damit der Slider nicht zurückschnappt
-                    seekPauseUntil = System.currentTimeMillis() + 3000;
+                    seekPauseUntil = System.currentTimeMillis() + 5000;
                     SoundCloudConfiguration cfg = getConfigAs(SoundCloudConfiguration.class);
-                    if (!cfg.chromecastCurrentTimeItem.isBlank()) {
+                    if (!cfg.chromecastControlItem.isBlank()) {
                         ScheduledFuture<?> old = seekDebounceJob;
                         if (old != null) old.cancel(false);
                         final int finalPos = elapsedSeconds;
-                        final String ccItem = cfg.chromecastCurrentTimeItem;
+                        final String ccControlItem = cfg.chromecastControlItem;
                         seekDebounceJob = scheduler.schedule(() -> {
-                            eventPublisher.post(ItemEventFactory.createCommandEvent(
-                                    ccItem, new DecimalType(finalPos)));
-                            logger.info("Seek: Command {}s an Chromecast-Item '{}' gesendet", finalPos, ccItem);
-                        }, 500, TimeUnit.MILLISECONDS);
+                            int delta = finalPos - currentElapsed;
+                            // 10-Sekunden-Schritte: Chromecast FASTFORWARD/REWIND = 10s
+                            int steps = (int) Math.round(Math.abs(delta) / 10.0);
+                            if (steps == 0) return;
+                            RewindFastforwardType cmd = delta > 0
+                                    ? RewindFastforwardType.FASTFORWARD
+                                    : RewindFastforwardType.REWIND;
+                            logger.info("Seek: {}x {} ({} delta) an '{}'", steps, cmd, delta, ccControlItem);
+                            for (int i = 0; i < steps; i++) {
+                                final long delayMs = 300L * i;
+                                scheduler.schedule(() -> eventPublisher.post(
+                                        ItemEventFactory.createCommandEvent(ccControlItem, cmd)),
+                                        delayMs, TimeUnit.MILLISECONDS);
+                            }
+                            // Timer nach allen Commands wieder freigeben
+                            seekPauseUntil = System.currentTimeMillis() + (300L * steps) + 2000;
+                        }, 300, TimeUnit.MILLISECONDS);
                     }
                 } catch (NumberFormatException e) {
                     logger.debug("Ungültiger Seek-Wert: {}", command);

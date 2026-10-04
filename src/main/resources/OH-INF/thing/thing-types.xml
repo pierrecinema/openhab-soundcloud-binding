@@ -35,9 +35,9 @@
                 <description>SoundCloud internal web client_id used for search (api-v2). Default works until SoundCloud rotates it.</description>
                 <default>gxPRNsEq7CDD7Wvem4iymWOq3YfU7KS8</default>
             </parameter>
-            <parameter name="chromecastCurrentTimeItem" type="text" required="false">
-                <label>Chromecast CurrentTime Item</label>
-                <description>Name des Number-Items, das mit dem currentTime-Kanal des Chromecasts verknüpft ist. Wenn gesetzt, wird beim Seek dieser Wert automatisch an den Chromecast weitergeleitet.</description>
+            <parameter name="chromecastControlItem" type="text" required="false">
+                <label>Chromecast Control Item</label>
+                <description>Name des Player-Items, das mit dem control-Kanal des Chromecasts verknüpft ist (z.B. BuroCast_Media_Control). Beim Seek werden FASTFORWARD/REWIND Commands in 10s-Schritten gesendet.</description>
             </parameter>
         </config-description>
     </thing-type>
