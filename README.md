@@ -8,7 +8,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ---
 
-## Features (v1.4.1)
+## Features (v1.4.10)
 
 - **Search** tracks by keyword — results appear instantly in the widget list
 - **Cover art** at 500 × 500 px displayed alongside title and artist
@@ -19,6 +19,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 - **Playback state** channel (PLAYING / PAUSED / STOPPED)
 - **OAuth 2.0** authentication — authorise once in the browser, tokens are stored and auto-refreshed
 - **Progress bar** — elapsed time / total duration shown in the widget, updates every second
+- **Seek / 30-second skip** — slider and skip buttons seek within the track via progressive MP3 + HTTP Range-Request
 
 ---
 
@@ -48,7 +49,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ### 1. Download the JAR
 
-Download `org.openhab.binding.soundcloud-1.4.1.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
+Download `org.openhab.binding.soundcloud-1.4.10.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
 
 openHAB detects and loads the bundle automatically — no restart needed. Check **Settings → Bindings** to confirm it appears.
 
@@ -267,15 +268,15 @@ Configure the rule triggers as **Item Command** on: `SC_CC_Control`, `SC_CC_Stop
 
 | Version | Status | Description |
 |---------|--------|-------------|
-| v1.0.x | ✅ done | Core binding: search, track load, stream URL via api-v2 |
-| v1.1.x | ✅ done | Widget: search results list, track selection, cover art |
-| v1.2.x | ✅ done | Chromecast integration: chip selection, play/pause/stop/mute/volume |
-| v1.3.x | ✅ done | Auth resilience: token never deleted on transient errors; immediate ONLINE on restart |
-| v1.4.1 | ✅ done | Progress bar: elapsed time channel, MM:SS display in widget |
-| v1.4.x | planned | Auto-cast when track changes (no manual Play press needed) |
-| v1.4.x | planned | Playlist queue: next / previous track navigation |
-| v1.5.x | planned | Progress bar / elapsed time display |
-| v2.0.0 | planned | Submit to openHAB add-ons repository |
+| v1.0.x  | ✅ done | Core binding: search, track load, stream URL via api-v2 |
+| v1.1.x  | ✅ done | Widget: search results list, track selection, cover art |
+| v1.2.x  | ✅ done | Chromecast integration: chip selection, play/pause/stop/mute/volume |
+| v1.3.x  | ✅ done | Auth resilience: token never deleted on transient errors; immediate ONLINE on restart |
+| v1.4.1  | ✅ done | Progress bar: elapsed time channel, MM:SS display in widget |
+| v1.4.10 | ✅ done | Seek: 30-second skip and slider via progressive MP3 + HTTP Range-Request |
+| v1.5.x  | planned | Auto-cast when track changes (no manual Play press needed) |
+| v1.5.x  | planned | Playlist queue: next / previous track navigation |
+| v2.0.0  | planned | Submit to openHAB add-ons repository |
 
 ---
 
