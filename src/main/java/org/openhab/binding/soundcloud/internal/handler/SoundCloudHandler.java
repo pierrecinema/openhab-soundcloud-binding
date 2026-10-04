@@ -16,10 +16,7 @@ import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudPlaylist;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudTokenResponse;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudTrack;
 import org.openhab.binding.soundcloud.internal.config.SoundCloudConfiguration;
-import org.openhab.core.events.EventPublisher;
-import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.library.types.DecimalType;
-import org.openhab.core.library.types.RewindFastforwardType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
@@ -50,14 +47,11 @@ public class SoundCloudHandler extends BaseThingHandler {
     private final SoundCloudOAuthClient oauthClient = new SoundCloudOAuthClient();
     private final Storage<String> storage;
     private final HttpService httpService;
-    private final EventPublisher eventPublisher;
-
     private @Nullable SoundCloudApiClient apiClient;
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
     private @Nullable ScheduledFuture<?> tokenRefreshJob;
     private @Nullable ScheduledFuture<?> progressJob;
-    private @Nullable ScheduledFuture<?> seekDebounceJob;
     private boolean servletRegistered = false;
     private String playbackState = "STOPPED";
     private final AtomicInteger searchGeneration = new AtomicInteger(0);
@@ -65,14 +59,11 @@ public class SoundCloudHandler extends BaseThingHandler {
     private static final int MAX_REFRESH_RETRIES = 3;
     private volatile int elapsedSeconds = 0;
     private int trackDurationSeconds = 0;
-    private volatile long seekPauseUntil = 0;
 
-    public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService,
-            EventPublisher eventPublisher) {
+    public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService) {
         super(thing);
         this.storage = storageService.getStorage(thing.getUID().toString());
         this.httpService = httpService;
-        this.eventPublisher = eventPublisher;
     }
 
     // -------------------------------------------------------------------------
@@ -276,9 +267,6 @@ public class SoundCloudHandler extends BaseThingHandler {
     private void startProgressTimer() {
         stopProgressTimer();
         progressJob = scheduler.scheduleWithFixedDelay(() -> {
-            if (System.currentTimeMillis() < seekPauseUntil) {
-                return; // Seek läuft noch — Timer-Tick überspringen
-            }
             elapsedSeconds++;
             updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
             if (trackDurationSeconds > 0 && elapsedSeconds >= trackDurationSeconds) {
@@ -329,42 +317,8 @@ public class SoundCloudHandler extends BaseThingHandler {
                 updateState(CHANNEL_CHROMECAST_TARGET, new StringType(command.toString()));
                 break;
             case CHANNEL_ELAPSED_TIME:
-                try {
-                    int seekTo = (int) Double.parseDouble(command.toString());
-                    final int currentElapsed = elapsedSeconds;
-                    elapsedSeconds = trackDurationSeconds > 0
-                            ? Math.max(0, Math.min(seekTo, trackDurationSeconds))
-                            : Math.max(0, seekTo);
-                    updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
-                    seekPauseUntil = System.currentTimeMillis() + 5000;
-                    SoundCloudConfiguration cfg = getConfigAs(SoundCloudConfiguration.class);
-                    if (!cfg.chromecastControlItem.isBlank()) {
-                        ScheduledFuture<?> old = seekDebounceJob;
-                        if (old != null) old.cancel(false);
-                        final int finalPos = elapsedSeconds;
-                        final String ccControlItem = cfg.chromecastControlItem;
-                        seekDebounceJob = scheduler.schedule(() -> {
-                            int delta = finalPos - currentElapsed;
-                            // 10-Sekunden-Schritte: Chromecast FASTFORWARD/REWIND = 10s
-                            int steps = (int) Math.round(Math.abs(delta) / 10.0);
-                            if (steps == 0) return;
-                            RewindFastforwardType cmd = delta > 0
-                                    ? RewindFastforwardType.FASTFORWARD
-                                    : RewindFastforwardType.REWIND;
-                            logger.info("Seek: {}x {} ({} delta) an '{}'", steps, cmd, delta, ccControlItem);
-                            for (int i = 0; i < steps; i++) {
-                                final long delayMs = 300L * i;
-                                scheduler.schedule(() -> eventPublisher.post(
-                                        ItemEventFactory.createCommandEvent(ccControlItem, cmd)),
-                                        delayMs, TimeUnit.MILLISECONDS);
-                            }
-                            // Timer nach allen Commands wieder freigeben
-                            seekPauseUntil = System.currentTimeMillis() + (300L * steps) + 2000;
-                        }, 300, TimeUnit.MILLISECONDS);
-                    }
-                } catch (NumberFormatException e) {
-                    logger.debug("Ungültiger Seek-Wert: {}", command);
-                }
+                // Elapsed-Time ist read-only — Commands werden ignoriert (Chromecast-Streams nicht seekbar)
+                logger.debug("Seek-Command ignoriert (Chromecast-Streams nicht seekbar): {}", command);
                 break;
             default:
                 logger.debug("Kein Handler für Channel {}", channelUID.getId());

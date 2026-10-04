@@ -9,6 +9,4 @@ public class SoundCloudConfiguration {
     public String redirectUri = "";
     /** SoundCloud web client_id for api-v2 search (update here if SoundCloud rotates it). */
     public String webClientId = "gxPRNsEq7CDD7Wvem4iymWOq3YfU7KS8";
-    /** Name des Player-Items, das mit dem control-Kanal des Chromecasts verknüpft ist (für FASTFORWARD/REWIND Seek). */
-    public String chromecastControlItem = "";
 }

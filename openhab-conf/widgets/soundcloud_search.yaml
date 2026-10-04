@@ -262,19 +262,16 @@ slots:
                                   fontVariantNumeric: tabular-nums
                                   padding: "0"
                                   margin: "0"
-                            # Seek bar
-                            - component: oh-slider
+                            # Progress Bar (read-only)
+                            - component: f7-progressbar
                               config:
-                                item: "=props.elapsedItem"
-                                min: 0
-                                max: "=+(@@props.durationItem)||0"
-                                step: 1
+                                progress: "=(+(@@props.elapsedItem)||0) / (+(@@props.durationItem)||1) * 100"
                                 style:
                                   flex: "1"
-                                  "--f7-range-bar-size": 16px
-                                  "--f7-range-bar-active-bg-color": "#ff5500"
-                                  "--f7-range-bar-bg-color": "rgba(0,0,0,0.12)"
-                                  "--f7-range-knob-size": 20px
+                                  "--f7-progressbar-progress-color": "#ff5500"
+                                  "--f7-progressbar-bg-color": "rgba(0,0,0,0.12)"
+                                  height: 16px
+                                  borderRadius: 8px
                             # Duration MM:SS
                             - component: f7-chip
                               config:
