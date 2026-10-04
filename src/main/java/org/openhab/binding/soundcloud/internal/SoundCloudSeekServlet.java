@@ -1,6 +1,8 @@
 package org.openhab.binding.soundcloud.internal;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.http.HttpClient;
@@ -21,15 +23,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Proxies a SoundCloud HLS m3u8 playlist and skips segments up to a given time offset,
- * enabling Chromecast to start playback from a specific position.
+ * Seek-Proxy für SoundCloud-Streams.
  *
- * GET /soundcloud/seek?url=ENCODED_M3U8_URL&from=SECONDS
+ * MP3-Modus  (type=mp3):  Range-Request auf progressive URL, liefert audio/mpeg ab Byte-Offset.
+ * HLS-Modus  (type=hls):  Parst m3u8 und überspringt Segmente bis zum Ziel-Offset.
+ *
+ * GET /soundcloud/seek?url=ENCODED_URL&from=SECONDS[&type=mp3|hls]
  */
 @NonNullByDefault
 public class SoundCloudSeekServlet extends HttpServlet {
 
-    private static final long serialVersionUID = 1L;
+    private static final long serialVersionUID = 2L;
+    private static final int BYTES_PER_SECOND_128KBPS = 16000; // 128 kbps CBR
+    private static final int STREAM_BUFFER_SIZE = 8192;
+
     private final Logger logger = LoggerFactory.getLogger(SoundCloudSeekServlet.class);
     private final HttpClient httpClient;
 
@@ -45,13 +52,14 @@ public class SoundCloudSeekServlet extends HttpServlet {
             throws ServletException, IOException {
         String urlParam = req.getParameter("url");
         String fromParam = req.getParameter("from");
+        String typeParam = req.getParameter("type");
 
         if (urlParam == null || fromParam == null) {
             resp.sendError(400, "Missing url or from parameter");
             return;
         }
 
-        String m3u8Url = URLDecoder.decode(urlParam, StandardCharsets.UTF_8);
+        String streamUrl = URLDecoder.decode(urlParam, StandardCharsets.UTF_8);
         int fromSeconds;
         try {
             fromSeconds = Integer.parseInt(fromParam);
@@ -60,6 +68,73 @@ public class SoundCloudSeekServlet extends HttpServlet {
             return;
         }
 
+        if ("mp3".equals(typeParam)) {
+            handleMp3Seek(streamUrl, fromSeconds, resp);
+        } else {
+            handleHlsSeek(streamUrl, fromSeconds, resp);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // MP3 Byte-Range Seek
+    // -------------------------------------------------------------------------
+
+    private void handleMp3Seek(String progressiveUrl, int fromSeconds, HttpServletResponse resp)
+            throws IOException {
+        long byteOffset = (long) fromSeconds * BYTES_PER_SECOND_128KBPS;
+        logger.info("MP3-Seek: {}s → Byte-Offset {}", fromSeconds, byteOffset);
+
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(progressiveUrl))
+                    .timeout(Duration.ofSeconds(30))
+                    .header("Range", "bytes=" + byteOffset + "-")
+                    .GET()
+                    .build();
+
+            HttpResponse<InputStream> response = httpClient.send(
+                    request, HttpResponse.BodyHandlers.ofInputStream());
+
+            int status = response.statusCode();
+            if (status != 206 && status != 200) {
+                logger.warn("Progressive MP3 lieferte HTTP {}", status);
+                resp.sendError(502, "SoundCloud returned " + status);
+                return;
+            }
+
+            resp.setContentType("audio/mpeg");
+            resp.setStatus(HttpServletResponse.SC_OK);
+
+            // Content-Length aus der Antwort weitergeben (optional)
+            response.headers().firstValue("content-length")
+                    .ifPresent(len -> resp.setHeader("Content-Length", len));
+
+            try (InputStream in = response.body();
+                 OutputStream out = resp.getOutputStream()) {
+                byte[] buf = new byte[STREAM_BUFFER_SIZE];
+                int n;
+                while ((n = in.read(buf)) != -1) {
+                    out.write(buf, 0, n);
+                }
+            }
+            logger.debug("MP3-Seek ab {}s (Byte {}) ausgeliefert", fromSeconds, byteOffset);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            resp.sendError(503, "Interrupted");
+        } catch (Exception e) {
+            logger.warn("MP3-Seek fehlgeschlagen: {}", e.getMessage());
+            resp.sendError(500, "Proxy error: " + e.getMessage());
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // HLS m3u8 Seek (Fallback)
+    // -------------------------------------------------------------------------
+
+    private void handleHlsSeek(String m3u8Url, int fromSeconds, HttpServletResponse resp)
+            throws IOException {
+        logger.info("HLS-Seek: {}s aus {}", fromSeconds, m3u8Url);
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(m3u8Url))
@@ -70,28 +145,26 @@ public class SoundCloudSeekServlet extends HttpServlet {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() != 200) {
-                logger.warn("SoundCloud HLS returned {}", response.statusCode());
+                logger.warn("SoundCloud HLS lieferte {}", response.statusCode());
                 resp.sendError(502, "SoundCloud returned " + response.statusCode());
                 return;
             }
 
             String modified = buildSeekPlaylist(response.body(), fromSeconds);
-
             resp.setContentType("application/x-mpegURL");
             resp.setCharacterEncoding("UTF-8");
             resp.getWriter().write(modified);
-            logger.debug("Seek-Playlist ab {}s ausgeliefert ({} Zeichen)", fromSeconds, modified.length());
+            logger.debug("HLS-Seek-Playlist ab {}s ausgeliefert ({} Zeichen)", fromSeconds, modified.length());
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             resp.sendError(503, "Interrupted");
         } catch (Exception e) {
-            logger.warn("Seek-Proxy fehlgeschlagen: {}", e.getMessage());
+            logger.warn("HLS-Seek fehlgeschlagen: {}", e.getMessage());
             resp.sendError(500, "Proxy error: " + e.getMessage());
         }
     }
 
-    /** Parses the m3u8 and returns a new playlist starting at the segment containing fromSeconds. */
     private String buildSeekPlaylist(String m3u8, int fromSeconds) {
         String[] lines = m3u8.split("\r?\n");
 
@@ -116,14 +189,12 @@ public class SoundCloudSeekServlet extends HttpServlet {
                 durations.add(parseDuration(pendingExtinf));
                 pendingExtinf = null;
             } else if (!segmentsStarted && !line.equals("#EXT-X-ENDLIST")) {
-                // Keep header lines but skip EXT-X-START (we won't add a new one)
                 if (!line.startsWith("#EXT-X-START")) {
                     headerLines.add(line);
                 }
             }
         }
 
-        // Find first segment that covers fromSeconds
         double cumulative = 0.0;
         int startIdx = 0;
         for (int i = 0; i < durations.size(); i++) {
@@ -147,12 +218,11 @@ public class SoundCloudSeekServlet extends HttpServlet {
         }
         sb.append("#EXT-X-ENDLIST\n");
 
-        logger.debug("m3u8: {} Segmente gesamt, starte ab Index {} ({}s)", segmentUrls.size(), startIdx, fromSeconds);
+        logger.debug("m3u8: {} Segmente, starte ab Index {} ({}s)", segmentUrls.size(), startIdx, fromSeconds);
         return sb.toString();
     }
 
     private double parseDuration(String extinf) {
-        // "#EXTINF:10.009," or "#EXTINF:10.009"
         try {
             String content = extinf.substring(8);
             int comma = content.indexOf(',');

@@ -90,10 +90,22 @@ public class SoundCloudApiClient {
         return gson.fromJson(get(API_V1 + "/playlists/" + playlistId), SoundCloudPlaylist.class);
     }
 
+    /** Resolves the progressive (MP3) stream URL — used for seek range requests. */
+    public @Nullable String resolveProgressiveUrlV2(SoundCloudTrack track) throws IOException, InterruptedException {
+        for (SoundCloudTrack.Transcoding t : track.media.transcodings) {
+            if ("progressive".equals(t.format.protocol)) {
+                String resolveUrl = t.url + "?client_id=" + webClientId + "&app_version=" + APP_VERSION;
+                String json = getNoAuth(resolveUrl);
+                SoundCloudStreamResponse resp = gson.fromJson(json, SoundCloudStreamResponse.class);
+                return resp.url.isEmpty() ? null : resp.url;
+            }
+        }
+        return null;
+    }
+
     /**
-     * Resolves the direct MP3 stream URL via api-v2 transcodings.
-     * Prefers "progressive" (direct MP3); falls back to first available transcoding.
-     * The transcoding URL returns JSON: {"url":"https://cf-media.sndcdn.com/...mp3"}
+     * Resolves the HLS stream URL via api-v2 transcodings.
+     * Prefers "hls" (m3u8 for Chromecast); falls back to progressive or first available.
      */
     public @Nullable String resolveStreamUrlV2(SoundCloudTrack track) throws IOException, InterruptedException {
         String transcodingUrl = null;

@@ -59,6 +59,7 @@ public class SoundCloudHandler extends BaseThingHandler {
     private @Nullable SoundCloudApiClient apiClient;
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
+    private @Nullable String currentProgressiveUrl;
     private @Nullable ScheduledFuture<?> tokenRefreshJob;
     private @Nullable ScheduledFuture<?> progressJob;
     private boolean servletRegistered = false;
@@ -419,6 +420,12 @@ public class SoundCloudHandler extends BaseThingHandler {
                 }
                 currentTrack = track;
                 currentStreamUrl = streamUrl;
+                try {
+                    currentProgressiveUrl = client.resolveProgressiveUrlV2(track);
+                } catch (Exception e) {
+                    logger.debug("Progressive URL nicht verfügbar: {}", e.getMessage());
+                    currentProgressiveUrl = null;
+                }
                 playbackState = "PLAYING";
                 trackDurationSeconds = (int) (track.duration / 1000);
                 applyTrackToChannels(track, streamUrl);
@@ -484,8 +491,14 @@ public class SoundCloudHandler extends BaseThingHandler {
             return;
         }
 
-        String streamUrl = currentStreamUrl;
-        if (streamUrl == null || streamUrl.isEmpty()) {
+        String seekUrl = currentProgressiveUrl;
+        String seekType = "mp3";
+        if (seekUrl == null || seekUrl.isEmpty()) {
+            // Fallback auf HLS-Proxy
+            seekUrl = currentStreamUrl;
+            seekType = "hls";
+        }
+        if (seekUrl == null || seekUrl.isEmpty()) {
             logger.debug("Seek: kein aktueller Stream");
             return;
         }
@@ -494,10 +507,11 @@ public class SoundCloudHandler extends BaseThingHandler {
         String origin = extractOrigin(config.redirectUri);
 
         String proxyUrl = origin + SEEK_PATH
-                + "?url=" + URLEncoder.encode(streamUrl, StandardCharsets.UTF_8)
-                + "&from=" + target;
+                + "?url=" + URLEncoder.encode(seekUrl, StandardCharsets.UTF_8)
+                + "&from=" + target
+                + "&type=" + seekType;
 
-        logger.info("Seek: {}s → {}s — Proxy-URL an SC_CC_PlayURI", elapsedSeconds, target);
+        logger.info("Seek: {}s → {}s — {}-Proxy an SC_CC_PlayURI", elapsedSeconds, target, seekType);
 
         // Router-Regel leitet SC_CC_PlayURI an das aktive Chromecast-Play-URI-Item weiter
         eventPublisher.post(ItemEventFactory.createCommandEvent("SC_CC_PlayURI", new StringType(proxyUrl)));
