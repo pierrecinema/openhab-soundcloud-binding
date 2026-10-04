@@ -35,6 +35,10 @@
                 <description>SoundCloud internal web client_id used for search (api-v2). Default works until SoundCloud rotates it.</description>
                 <default>gxPRNsEq7CDD7Wvem4iymWOq3YfU7KS8</default>
             </parameter>
+            <parameter name="chromecastCurrentTimeItem" type="text" required="false">
+                <label>Chromecast CurrentTime Item</label>
+                <description>Name des Number-Items, das mit dem currentTime-Kanal des Chromecasts verknüpft ist. Wenn gesetzt, wird beim Seek dieser Wert automatisch an den Chromecast weitergeleitet.</description>
+            </parameter>
         </config-description>
     </thing-type>
 
@@ -115,8 +119,8 @@
     <channel-type id="elapsed-time">
         <item-type>Number</item-type>
         <label>Elapsed Time</label>
-        <description>Elapsed playback time in seconds — updates every second while playing, resets on new track or stop</description>
-        <state readOnly="true" pattern="%.0f s"/>
+        <description>Elapsed playback time in seconds — updates every second while playing, resets on new track or stop. Send a Number to seek to that position.</description>
+        <state pattern="%.0f s"/>
     </channel-type>
 
     <channel-type id="stream-url">

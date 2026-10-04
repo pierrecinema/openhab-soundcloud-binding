@@ -16,6 +16,8 @@ import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudPlaylist;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudTokenResponse;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudTrack;
 import org.openhab.binding.soundcloud.internal.config.SoundCloudConfiguration;
+import org.openhab.core.events.EventPublisher;
+import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.storage.Storage;
@@ -47,12 +49,14 @@ public class SoundCloudHandler extends BaseThingHandler {
     private final SoundCloudOAuthClient oauthClient = new SoundCloudOAuthClient();
     private final Storage<String> storage;
     private final HttpService httpService;
+    private final EventPublisher eventPublisher;
 
     private @Nullable SoundCloudApiClient apiClient;
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
     private @Nullable ScheduledFuture<?> tokenRefreshJob;
     private @Nullable ScheduledFuture<?> progressJob;
+    private @Nullable ScheduledFuture<?> seekDebounceJob;
     private boolean servletRegistered = false;
     private String playbackState = "STOPPED";
     private final AtomicInteger searchGeneration = new AtomicInteger(0);
@@ -61,10 +65,12 @@ public class SoundCloudHandler extends BaseThingHandler {
     private int elapsedSeconds = 0;
     private int trackDurationSeconds = 0;
 
-    public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService) {
+    public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService,
+            EventPublisher eventPublisher) {
         super(thing);
         this.storage = storageService.getStorage(thing.getUID().toString());
         this.httpService = httpService;
+        this.eventPublisher = eventPublisher;
     }
 
     // -------------------------------------------------------------------------
@@ -316,6 +322,29 @@ public class SoundCloudHandler extends BaseThingHandler {
             case CHANNEL_CHROMECAST_TARGET:
                 // Store the selected Chromecast target item name
                 updateState(CHANNEL_CHROMECAST_TARGET, new StringType(command.toString()));
+                break;
+            case CHANNEL_ELAPSED_TIME:
+                try {
+                    int seekTo = (int) Double.parseDouble(command.toString());
+                    elapsedSeconds = trackDurationSeconds > 0
+                            ? Math.max(0, Math.min(seekTo, trackDurationSeconds))
+                            : Math.max(0, seekTo);
+                    updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
+                    SoundCloudConfiguration cfg = getConfigAs(SoundCloudConfiguration.class);
+                    if (!cfg.chromecastCurrentTimeItem.isBlank()) {
+                        ScheduledFuture<?> old = seekDebounceJob;
+                        if (old != null) old.cancel(false);
+                        final int finalPos = elapsedSeconds;
+                        final String ccItem = cfg.chromecastCurrentTimeItem;
+                        seekDebounceJob = scheduler.schedule(() -> {
+                            eventPublisher.post(ItemEventFactory.createCommandEvent(
+                                    ccItem, new DecimalType(finalPos)));
+                            logger.info("Seek: Command {}s an Chromecast-Item '{}' gesendet", finalPos, ccItem);
+                        }, 500, TimeUnit.MILLISECONDS);
+                    }
+                } catch (NumberFormatException e) {
+                    logger.debug("Ungültiger Seek-Wert: {}", command);
+                }
                 break;
             default:
                 logger.debug("Kein Handler für Channel {}", channelUID.getId());

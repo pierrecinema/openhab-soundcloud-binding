@@ -161,11 +161,19 @@ slots:
                     default:
                       - component: oh-list-item
                         config:
-                          title: "=loop.track.title"
-                          subtitle: "=loop.track.artist"
                           action: command
                           actionItem: "=props.trackIdItem"
                           actionCommand: "=loop.track.id"
+                          title: "=loop.track.title"
+                          subtitle: "=loop.track.artist"
+                          style:
+                            backgroundImage: "='url('+loop.track.artwork+')'"
+                            backgroundSize: 64px 64px
+                            backgroundRepeat: no-repeat
+                            backgroundPosition: 12px center
+                            minHeight: 80px
+                            paddingLeft: 88px
+                            boxSizing: border-box
 
     # ── Aktueller Track ───────────────────────────────────────────────────────
     - component: f7-card-content
@@ -242,44 +250,44 @@ slots:
                         slots:
                           default:
                             # Elapsed MM:SS
-                            - component: f7-col
+                            - component: f7-chip
                               config:
+                                text: "=((+(@@props.elapsedItem)||0)/60|0)+':'+(((+(@@props.elapsedItem)||0)%60)<10?'0':'')+((+(@@props.elapsedItem)||0)%60)"
                                 style:
-                                  flex: "0 0 36px"
-                                  fontSize: 11px
-                                  color: "#888"
-                                  textAlign: left
+                                  flex: "0 0 auto"
+                                  fontSize: 16px
+                                  fontWeight: "700"
+                                  color: "#ff5500"
+                                  backgroundColor: transparent
                                   fontVariantNumeric: tabular-nums
-                                text: "=(function(s){var m=Math.floor(s/60),ss=s%60;return m+':'+(ss<10?'0':'')+ss})(+(@@props.elapsedItem)||0)"
-                            # Bar track
-                            - component: f7-col
+                                  padding: "0"
+                                  margin: "0"
+                            # Seek bar
+                            - component: oh-slider
                               config:
+                                item: "=props.elapsedItem"
+                                min: 0
+                                max: "=+(@@props.durationItem)||0"
+                                step: 1
+                                releaseOnly: true
                                 style:
                                   flex: "1"
-                                  height: 4px
-                                  background: "rgba(0,0,0,0.12)"
-                                  borderRadius: 2px
-                                  overflow: hidden
-                              slots:
-                                default:
-                                  - component: f7-col
-                                    config:
-                                      style:
-                                        height: 100%
-                                        background: "#ff5500"
-                                        borderRadius: 2px
-                                        transition: width 0.8s linear
-                                        width: "=(+(@@props.durationItem)||0)>0 ? Math.min(100,Math.round((+(@@props.elapsedItem)||0)/(+(@@props.durationItem)||1)*100))+'%' : '0%'"
+                                  "--f7-range-bar-size": 16px
+                                  "--f7-range-bar-active-bg-color": "#ff5500"
+                                  "--f7-range-bar-bg-color": "rgba(0,0,0,0.12)"
+                                  "--f7-range-knob-size": 20px
                             # Duration MM:SS
-                            - component: f7-col
+                            - component: f7-chip
                               config:
+                                text: "=((+(@@props.durationItem)||0)/60|0)+':'+(((+(@@props.durationItem)||0)%60)<10?'0':'')+((+(@@props.durationItem)||0)%60)"
                                 style:
-                                  flex: "0 0 36px"
+                                  flex: "0 0 auto"
                                   fontSize: 11px
                                   color: "#888"
-                                  textAlign: right
+                                  backgroundColor: transparent
                                   fontVariantNumeric: tabular-nums
-                                text: "=(function(s){var m=Math.floor(s/60),ss=s%60;return m+':'+(ss<10?'0':'')+ss})(+(@@props.durationItem)||0)"
+                                  padding: "0"
+                                  margin: "0"
                       # Play / Pause / Stop / Mute
                       - component: f7-row
                         config:
@@ -318,7 +326,7 @@ slots:
                                   color: red
                                 action: command
                                 actionItem: SC_CC_Stop
-                                actionCommand: ON
+                                actionCommand: "ON"
                             # Mute Toggle → SC_CC_Mute (Routing-Regel leitet weiter)
                             - component: oh-button
                               config:
