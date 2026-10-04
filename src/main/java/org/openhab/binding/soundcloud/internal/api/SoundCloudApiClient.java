@@ -98,17 +98,28 @@ public class SoundCloudApiClient {
     public @Nullable String resolveStreamUrlV2(SoundCloudTrack track) throws IOException, InterruptedException {
         String transcodingUrl = null;
 
-        // Prefer progressive (direct MP3 — works with Chromecast)
+        // Prefer HLS — Chromecast kann in HLS-Streams seeken
         for (SoundCloudTrack.Transcoding t : track.media.transcodings) {
-            if ("progressive".equals(t.format.protocol)) {
+            if ("hls".equals(t.format.protocol)) {
                 transcodingUrl = t.url;
+                logger.debug("HLS-Transcoding für '{}': {}", track.title, transcodingUrl);
                 break;
             }
         }
-        // Fallback: first available transcoding (may be HLS)
+        // Fallback: progressive (direktes MP3)
+        if (transcodingUrl == null) {
+            for (SoundCloudTrack.Transcoding t : track.media.transcodings) {
+                if ("progressive".equals(t.format.protocol)) {
+                    transcodingUrl = t.url;
+                    logger.debug("Kein HLS für '{}', Fallback auf progressive", track.title);
+                    break;
+                }
+            }
+        }
+        // Letzter Fallback: erstes verfügbares Transcoding
         if (transcodingUrl == null && !track.media.transcodings.isEmpty()) {
             transcodingUrl = track.media.transcodings.get(0).url;
-            logger.debug("No progressive transcoding for '{}', using: {}", track.title, transcodingUrl);
+            logger.debug("Kein bevorzugtes Transcoding für '{}', verwende: {}", track.title, transcodingUrl);
         }
 
         if (transcodingUrl == null || transcodingUrl.isEmpty()) {
