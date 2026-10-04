@@ -2,6 +2,9 @@ package org.openhab.binding.soundcloud.internal.handler;
 
 import static org.openhab.binding.soundcloud.internal.SoundCloudBindingConstants.*;
 
+import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -10,6 +13,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
 import org.openhab.binding.soundcloud.internal.SoundCloudCallbackServlet;
+import org.openhab.binding.soundcloud.internal.SoundCloudSeekServlet;
 import org.openhab.binding.soundcloud.internal.api.SoundCloudApiClient;
 import org.openhab.binding.soundcloud.internal.api.SoundCloudOAuthClient;
 import org.openhab.binding.soundcloud.internal.api.dto.SoundCloudPlaylist;
@@ -19,7 +23,6 @@ import org.openhab.binding.soundcloud.internal.config.SoundCloudConfiguration;
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.library.types.DecimalType;
-import org.openhab.core.library.types.RewindFastforwardType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
@@ -42,9 +45,11 @@ import com.google.gson.JsonObject;
 public class SoundCloudHandler extends BaseThingHandler {
 
     private static final String CALLBACK_PATH      = "/soundcloud/callback";
+    private static final String SEEK_PATH          = "/soundcloud/seek";
     private static final String STORAGE_ACCESS     = "access_token";
     private static final String STORAGE_REFRESH    = "refresh_token";
     private static final String STORAGE_EXPIRES_AT = "expires_at"; // Unix-Timestamp (Sekunden)
+    private static final String STORAGE_CC_TARGET  = "chromecast_target";
 
     private final Logger logger = LoggerFactory.getLogger(SoundCloudHandler.class);
     private final SoundCloudOAuthClient oauthClient = new SoundCloudOAuthClient();
@@ -57,6 +62,8 @@ public class SoundCloudHandler extends BaseThingHandler {
     private @Nullable ScheduledFuture<?> tokenRefreshJob;
     private @Nullable ScheduledFuture<?> progressJob;
     private boolean servletRegistered = false;
+    private boolean seekServletRegistered = false;
+    private @Nullable String currentChromecastTarget;
     private String playbackState = "STOPPED";
     private final AtomicInteger searchGeneration = new AtomicInteger(0);
     private int refreshRetryCount = 0;
@@ -86,6 +93,11 @@ public class SoundCloudHandler extends BaseThingHandler {
             return;
         }
 
+        String storedTarget = storage.get(STORAGE_CC_TARGET);
+        if (storedTarget != null && !storedTarget.isBlank()) {
+            currentChromecastTarget = storedTarget;
+        }
+        registerSeekServlet();
         updateStatus(ThingStatus.UNKNOWN);
         scheduler.execute(() -> initOAuth(config));
     }
@@ -135,6 +147,30 @@ public class SoundCloudHandler extends BaseThingHandler {
                 logger.debug("Servlet-Deregistrierung: {}", e.getMessage());
             }
             servletRegistered = false;
+        }
+    }
+
+    private void registerSeekServlet() {
+        if (seekServletRegistered) return;
+        try {
+            httpService.registerServlet(SEEK_PATH, new SoundCloudSeekServlet(), null, null);
+            seekServletRegistered = true;
+            logger.debug("Seek-Servlet registriert unter {}", SEEK_PATH);
+        } catch (NamespaceException e) {
+            seekServletRegistered = true; // bereits registriert
+        } catch (Exception e) {
+            logger.warn("Seek-Servlet konnte nicht registriert werden: {}", e.getMessage());
+        }
+    }
+
+    private void unregisterSeekServlet() {
+        if (seekServletRegistered) {
+            try {
+                httpService.unregister(SEEK_PATH);
+            } catch (Exception e) {
+                logger.debug("Seek-Servlet-Deregistrierung: {}", e.getMessage());
+            }
+            seekServletRegistered = false;
         }
     }
 
@@ -261,6 +297,7 @@ public class SoundCloudHandler extends BaseThingHandler {
     @Override
     public void dispose() {
         unregisterServlet();
+        unregisterSeekServlet();
         ScheduledFuture<?> job = tokenRefreshJob;
         if (job != null) {
             job.cancel(true);
@@ -319,7 +356,8 @@ public class SoundCloudHandler extends BaseThingHandler {
                 loadPlaylist(parseLong(command.toString()));
                 break;
             case CHANNEL_CHROMECAST_TARGET:
-                // Store the selected Chromecast target item name
+                currentChromecastTarget = command.toString();
+                storage.put(STORAGE_CC_TARGET, currentChromecastTarget);
                 updateState(CHANNEL_CHROMECAST_TARGET, new StringType(command.toString()));
                 break;
             case CHANNEL_ELAPSED_TIME:
@@ -445,14 +483,43 @@ public class SoundCloudHandler extends BaseThingHandler {
             logger.debug("Seek: ungültiger Wert '{}'", commandStr);
             return;
         }
-        long diff = target - elapsedSeconds;
-        if (diff == 0) return;
-        RewindFastforwardType cmd = diff > 0 ? RewindFastforwardType.FASTFORWARD : RewindFastforwardType.REWIND;
-        // Sende über SC_CC_Control — die Router-Rule leitet an das aktive Gerät weiter
-        logger.info("Seek: {} → {} (diff {}s) → sende {} an SC_CC_Control", elapsedSeconds, target, diff, cmd);
-        eventPublisher.post(ItemEventFactory.createCommandEvent("SC_CC_Control", cmd));
+
+        String streamUrl = currentStreamUrl;
+        if (streamUrl == null || streamUrl.isEmpty()) {
+            logger.debug("Seek: kein aktueller Stream");
+            return;
+        }
+
+        String ccTarget = currentChromecastTarget;
+        if (ccTarget == null || ccTarget.isEmpty()) {
+            logger.warn("Seek: kein Chromecast-Ziel bekannt — bitte zuerst Gerät im Widget auswählen");
+            return;
+        }
+
+        SoundCloudConfiguration config = getConfigAs(SoundCloudConfiguration.class);
+        String origin = extractOrigin(config.redirectUri);
+
+        String proxyUrl = origin + SEEK_PATH
+                + "?url=" + URLEncoder.encode(streamUrl, StandardCharsets.UTF_8)
+                + "&from=" + target;
+
+        logger.info("Seek: {}s → {}s — Proxy-URL an {}: {}", elapsedSeconds, target, ccTarget, proxyUrl);
+
+        // Neuen Stream ab Zielposition direkt an das Chromecast-Play-URI-Item senden
+        eventPublisher.post(ItemEventFactory.createCommandEvent(ccTarget, new StringType(proxyUrl)));
+
         elapsedSeconds = (int) target;
         updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
+    }
+
+    private static String extractOrigin(String uri) {
+        try {
+            URI u = URI.create(uri);
+            int port = u.getPort();
+            return u.getScheme() + "://" + u.getHost() + (port > 0 ? ":" + port : "");
+        } catch (Exception e) {
+            return "http://192.168.1.201:7070";
+        }
     }
 
     private void applyTrackToChannels(SoundCloudTrack track, String streamUrl) {
