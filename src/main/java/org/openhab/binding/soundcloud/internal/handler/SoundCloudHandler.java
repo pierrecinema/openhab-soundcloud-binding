@@ -62,8 +62,9 @@ public class SoundCloudHandler extends BaseThingHandler {
     private final AtomicInteger searchGeneration = new AtomicInteger(0);
     private int refreshRetryCount = 0;
     private static final int MAX_REFRESH_RETRIES = 3;
-    private int elapsedSeconds = 0;
+    private volatile int elapsedSeconds = 0;
     private int trackDurationSeconds = 0;
+    private volatile long seekPauseUntil = 0;
 
     public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService,
             EventPublisher eventPublisher) {
@@ -274,6 +275,9 @@ public class SoundCloudHandler extends BaseThingHandler {
     private void startProgressTimer() {
         stopProgressTimer();
         progressJob = scheduler.scheduleWithFixedDelay(() -> {
+            if (System.currentTimeMillis() < seekPauseUntil) {
+                return; // Seek läuft noch — Timer-Tick überspringen
+            }
             elapsedSeconds++;
             updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
             if (trackDurationSeconds > 0 && elapsedSeconds >= trackDurationSeconds) {
@@ -330,6 +334,8 @@ public class SoundCloudHandler extends BaseThingHandler {
                             ? Math.max(0, Math.min(seekTo, trackDurationSeconds))
                             : Math.max(0, seekTo);
                     updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
+                    // Timer für 3 Sekunden pausieren damit der Slider nicht zurückschnappt
+                    seekPauseUntil = System.currentTimeMillis() + 3000;
                     SoundCloudConfiguration cfg = getConfigAs(SoundCloudConfiguration.class);
                     if (!cfg.chromecastCurrentTimeItem.isBlank()) {
                         ScheduledFuture<?> old = seekDebounceJob;
