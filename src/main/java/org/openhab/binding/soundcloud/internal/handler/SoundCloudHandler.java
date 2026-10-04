@@ -490,12 +490,6 @@ public class SoundCloudHandler extends BaseThingHandler {
             return;
         }
 
-        String ccTarget = currentChromecastTarget;
-        if (ccTarget == null || ccTarget.isEmpty()) {
-            logger.warn("Seek: kein Chromecast-Ziel bekannt — bitte zuerst Gerät im Widget auswählen");
-            return;
-        }
-
         SoundCloudConfiguration config = getConfigAs(SoundCloudConfiguration.class);
         String origin = extractOrigin(config.redirectUri);
 
@@ -503,10 +497,10 @@ public class SoundCloudHandler extends BaseThingHandler {
                 + "?url=" + URLEncoder.encode(streamUrl, StandardCharsets.UTF_8)
                 + "&from=" + target;
 
-        logger.info("Seek: {}s → {}s — Proxy-URL an {}: {}", elapsedSeconds, target, ccTarget, proxyUrl);
+        logger.info("Seek: {}s → {}s — Proxy-URL an SC_CC_PlayURI", elapsedSeconds, target);
 
-        // Neuen Stream ab Zielposition direkt an das Chromecast-Play-URI-Item senden
-        eventPublisher.post(ItemEventFactory.createCommandEvent(ccTarget, new StringType(proxyUrl)));
+        // Router-Regel leitet SC_CC_PlayURI an das aktive Chromecast-Play-URI-Item weiter
+        eventPublisher.post(ItemEventFactory.createCommandEvent("SC_CC_PlayURI", new StringType(proxyUrl)));
 
         elapsedSeconds = (int) target;
         updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
