@@ -29,6 +29,12 @@ public class SoundCloudBindingConstants {
     // Chromecast target channel (stores the selected Chromecast playuri item name)
     public static final String CHANNEL_CHROMECAST_TARGET = "player#chromecast-target";
 
+    // Queue / playback mode channels
+    public static final String CHANNEL_QUEUE_INDEX = "player#queue-index";
+    public static final String CHANNEL_QUEUE_SIZE  = "player#queue-size";
+    public static final String CHANNEL_REPEAT      = "player#repeat";
+    public static final String CHANNEL_SHUFFLE     = "player#shuffle";
+
     // Config property keys
     public static final String CONFIG_CLIENT_ID   = "clientId";
     public static final String CONFIG_OAUTH_TOKEN = "oauthToken";

@@ -8,7 +8,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ---
 
-## Features (v1.4.10)
+## Features (v1.5.0)
 
 - **Search** tracks by keyword — results appear instantly in the widget list
 - **Cover art** at 500 × 500 px displayed alongside title and artist
@@ -20,6 +20,11 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 - **OAuth 2.0** authentication — authorise once in the browser, tokens are stored and auto-refreshed
 - **Progress bar** — elapsed time / total duration shown in the widget, updates every second
 - **Seek / 30-second skip** — slider and skip buttons seek within the track via progressive MP3 + HTTP Range-Request
+- **Playlist queue** — load a full playlist and navigate through all tracks with Next / Previous
+- **Auto-advance** — automatically plays the next track when the current one ends
+- **Repeat modes** — OFF / Repeat Track / Repeat Playlist
+- **Shuffle** — randomises playback order within the queue
+- **Track counter** — shows current position in queue (e.g. 3 / 12) in the widget
 
 ---
 
@@ -49,7 +54,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ### 1. Download the JAR
 
-Download `org.openhab.binding.soundcloud-1.4.10.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
+Download `org.openhab.binding.soundcloud-1.5.0.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
 
 openHAB detects and loads the bundle automatically — no restart needed. Check **Settings → Bindings** to confirm it appears.
 
@@ -147,6 +152,10 @@ Add the `soundcloud_search` widget to a page and configure the following propert
 | `chromecastTag` | | Tag on your Chromecast `playuri` items (default: `Chromecast`) |
 | `elapsedItem` | | Number Item linked to `player#elapsed-time` — enables the progress bar |
 | `durationItem` | | Number Item linked to `player#duration` — required for the progress bar |
+| `queueIndexItem` | | Number Item linked to `player#queue-index` — shows current queue position |
+| `queueSizeItem` | | Number Item linked to `player#queue-size` — required for track counter (e.g. 3/12) |
+| `repeatItem` | | String Item linked to `player#repeat` — enables the repeat button (OFF → PLAYLIST → TRACK cycle) |
+| `shuffleItem` | | Switch Item linked to `player#shuffle` — enables the shuffle toggle |
 
 > **Note:** Pause, Stop, Volume and Mute are routed via four fixed proxy items (`SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`) and a routing rule — see [Chromecast routing rule](#chromecast-routing-rule) below. No per-device configuration is needed in the widget.
 
@@ -166,6 +175,10 @@ Add the `soundcloud_search` widget to a page and configure the following propert
 | `player#stream-url` | String | R | Direct MP3 URL (resolved via api-v2 transcodings) |
 | `player#playback-state` | String | RW | PLAYING / PAUSED / STOPPED |
 | `player#chromecast-target` | String | RW | Name of the selected Chromecast playuri item |
+| `player#queue-index` | Number | R | Current track position in the queue (1-based) |
+| `player#queue-size` | Number | R | Total number of tracks in the current queue |
+| `player#repeat` | String | RW | Repeat mode: OFF / TRACK / PLAYLIST |
+| `player#shuffle` | Switch | RW | Shuffle playback order |
 | `search#query` | String | W | Send a search term |
 | `search#results` | String | R | JSON array: `[{id, title, artist, artwork, duration}, …]` |
 
@@ -274,15 +287,14 @@ Configure the rule triggers as **Item Command** on: `SC_CC_Control`, `SC_CC_Stop
 | v1.3.x  | ✅ done | Auth resilience: token never deleted on transient errors; immediate ONLINE on restart |
 | v1.4.1  | ✅ done | Progress bar: elapsed time channel, MM:SS display in widget |
 | v1.4.10 | ✅ done | Seek: 30-second skip and slider via progressive MP3 + HTTP Range-Request |
-| v1.5.x  | planned | Auto-cast when track changes (no manual Play press needed) |
-| v1.5.x  | planned | Playlist queue: next / previous track navigation |
+| v1.5.0  | ✅ done | Playlist queue: next / previous, auto-advance, repeat (OFF/TRACK/PLAYLIST), shuffle |
+| v1.6.x  | planned | Likes / stream feed — browse your own liked tracks |
 | v2.0.0  | planned | Submit to openHAB add-ons repository |
 
 ---
 
 ## Known limitations (Alpha)
 
-- Only the first track of a playlist is played (queue not yet implemented)
 - Stream URLs are time-limited by SoundCloud and expire after some time; reloading the track generates a fresh URL
 - The SoundCloud API requires a registered app — streaming is only available when a valid Client ID / OAuth token is configured
 

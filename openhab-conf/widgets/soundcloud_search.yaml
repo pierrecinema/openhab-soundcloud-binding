@@ -75,6 +75,30 @@ props:
       type: TEXT
       required: false
       context: item
+    - name: queueIndexItem
+      label: Queue Index Item
+      description: Number Item linked to soundcloud:account:...:player#queue-index
+      type: TEXT
+      required: false
+      context: item
+    - name: queueSizeItem
+      label: Queue Size Item
+      description: Number Item linked to soundcloud:account:...:player#queue-size
+      type: TEXT
+      required: false
+      context: item
+    - name: repeatItem
+      label: Repeat Mode Item
+      description: String Item linked to soundcloud:account:...:player#repeat (OFF/TRACK/PLAYLIST)
+      type: TEXT
+      required: false
+      context: item
+    - name: shuffleItem
+      label: Shuffle Item
+      description: Switch Item linked to soundcloud:account:...:player#shuffle
+      type: TEXT
+      required: false
+      context: item
 timestamp: 2026-05-19T00:00:00Z
 component: f7-card
 config:
@@ -222,16 +246,33 @@ slots:
                       gap: 4px
                   slots:
                     default:
-                      - component: oh-label
+                      - component: f7-row
                         config:
-                          item: "=props.titleItem"
                           style:
-                            fontWeight: "700"
-                            fontSize: 16px
-                            display: block
-                            whiteSpace: nowrap
-                            overflow: hidden
-                            textOverflow: ellipsis
+                            alignItems: center
+                            gap: 8px
+                        slots:
+                          default:
+                            - component: oh-label
+                              config:
+                                item: "=props.titleItem"
+                                style:
+                                  fontWeight: "700"
+                                  fontSize: 16px
+                                  flex: "1"
+                                  whiteSpace: nowrap
+                                  overflow: hidden
+                                  textOverflow: ellipsis
+                            # Track-Counter (z.B. 3/12)
+                            - component: f7-chip
+                              config:
+                                visible: "=!!props.queueSizeItem && +(@@props.queueSizeItem) > 1"
+                                text: "=(+(@@props.queueIndexItem)||1)+' / '+(+(@@props.queueSizeItem)||1)"
+                                style:
+                                  fontSize: 11px
+                                  color: "#888"
+                                  backgroundColor: transparent
+                                  padding: "0"
                       - component: oh-label
                         config:
                           item: "=props.artistItem"
@@ -285,15 +326,27 @@ slots:
                                   fontVariantNumeric: tabular-nums
                                   padding: "0"
                                   margin: "0"
-                      # Play / Pause / Stop / Mute
+                      # Previous / Play / Pause / Stop / Next / Mute
                       - component: f7-row
                         config:
                           style:
                             gap: 8px
                             marginTop: 12px
                             justifyContent: flex-start
+                            alignItems: center
                         slots:
                           default:
+                            # Previous
+                            - component: oh-button
+                              config:
+                                visible: "=!!props.stateItem"
+                                iconF7: backward_fill
+                                iconSize: 28
+                                style:
+                                  color: "#555"
+                                action: command
+                                actionItem: "=props.stateItem"
+                                actionCommand: PREVIOUS
                             # Play → sendet Stream-URL direkt an ausgewähltes Chromecast
                             - component: oh-button
                               config:
@@ -324,6 +377,17 @@ slots:
                                 action: command
                                 actionItem: SC_CC_Stop
                                 actionCommand: "ON"
+                            # Next
+                            - component: oh-button
+                              config:
+                                visible: "=!!props.stateItem"
+                                iconF7: forward_fill
+                                iconSize: 28
+                                style:
+                                  color: "#555"
+                                action: command
+                                actionItem: "=props.stateItem"
+                                actionCommand: NEXT
                             # Mute Toggle → SC_CC_Mute (Routing-Regel leitet weiter)
                             - component: oh-button
                               config:
@@ -334,6 +398,54 @@ slots:
                                 action: command
                                 actionItem: SC_CC_Mute
                                 actionCommand: "=(items['SC_CC_Mute'].state === 'ON') ? 'OFF' : 'ON'"
+                      # Shuffle + Repeat
+                      - component: f7-row
+                        config:
+                          visible: "=!!props.shuffleItem || !!props.repeatItem"
+                          style:
+                            gap: 8px
+                            marginTop: 8px
+                            alignItems: center
+                        slots:
+                          default:
+                            # Shuffle
+                            - component: oh-button
+                              config:
+                                visible: "=!!props.shuffleItem"
+                                iconF7: shuffle
+                                iconSize: 22
+                                style:
+                                  color: "=(@@props.shuffleItem === 'ON') ? '#ff5500' : '#aaa'"
+                                  border: "=(@@props.shuffleItem === 'ON') ? '1px solid #ff5500' : '1px solid #ccc'"
+                                  borderRadius: 6px
+                                  padding: "4px 8px"
+                                action: command
+                                actionItem: "=props.shuffleItem"
+                                actionCommand: "=(@@props.shuffleItem === 'ON') ? 'OFF' : 'ON'"
+                            # Repeat
+                            - component: oh-button
+                              config:
+                                visible: "=!!props.repeatItem"
+                                iconF7: "=(@@props.repeatItem === 'TRACK') ? 'repeat_1' : 'repeat'"
+                                iconSize: 22
+                                style:
+                                  color: "=(@@props.repeatItem === 'OFF' || !@@props.repeatItem) ? '#aaa' : '#ff5500'"
+                                  border: "=(@@props.repeatItem === 'OFF' || !@@props.repeatItem) ? '1px solid #ccc' : '1px solid #ff5500'"
+                                  borderRadius: 6px
+                                  padding: "4px 8px"
+                                action: command
+                                actionItem: "=props.repeatItem"
+                                actionCommand: "=(@@props.repeatItem === 'OFF' || !@@props.repeatItem) ? 'PLAYLIST' : (@@props.repeatItem === 'PLAYLIST') ? 'TRACK' : 'OFF'"
+                            # Repeat-Label
+                            - component: f7-chip
+                              config:
+                                visible: "=!!props.repeatItem && @@props.repeatItem !== 'OFF'"
+                                text: "=(@@props.repeatItem === 'TRACK') ? 'Track' : 'Playlist'"
+                                style:
+                                  fontSize: 11px
+                                  color: "#ff5500"
+                                  backgroundColor: transparent
+                                  padding: "0"
                       # Volume Slider → SC_CC_Volume (Sync-Regel hält Wert aktuell)
                       - component: f7-row
                         config:

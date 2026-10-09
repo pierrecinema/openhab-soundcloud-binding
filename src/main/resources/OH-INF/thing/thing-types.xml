@@ -59,6 +59,10 @@
             <channel id="stream-url"     typeId="stream-url"/>
             <channel id="playback-state"      typeId="playback-state"/>
             <channel id="chromecast-target"  typeId="chromecast-target"/>
+            <channel id="queue-index"        typeId="queue-index"/>
+            <channel id="queue-size"         typeId="queue-size"/>
+            <channel id="repeat"             typeId="repeat"/>
+            <channel id="shuffle"            typeId="shuffle"/>
         </channels>
     </channel-group-type>
 
@@ -149,6 +153,8 @@
                 <option value="PLAY">Play</option>
                 <option value="PAUSE">Pause</option>
                 <option value="STOP">Stop</option>
+                <option value="NEXT">Next</option>
+                <option value="PREVIOUS">Previous</option>
             </options>
         </command>
     </channel-type>
@@ -160,6 +166,40 @@
             Name of the selected Chromecast playuri item. Set by the widget when the user picks a Chromecast.
             Link this channel to an item and use it as chromecastTargetItem in the widget.
         </description>
+        <state pattern="%s"/>
+    </channel-type>
+
+    <channel-type id="queue-index">
+        <item-type>Number</item-type>
+        <label>Queue Position</label>
+        <description>Current track position in the queue (1-based). Read-only — use NEXT/PREVIOUS on playback-state to navigate.</description>
+        <state readOnly="true" pattern="%.0f"/>
+    </channel-type>
+
+    <channel-type id="queue-size">
+        <item-type>Number</item-type>
+        <label>Queue Size</label>
+        <description>Total number of tracks in the current queue.</description>
+        <state readOnly="true" pattern="%.0f"/>
+    </channel-type>
+
+    <channel-type id="repeat">
+        <item-type>String</item-type>
+        <label>Repeat Mode</label>
+        <description>Repeat mode: OFF (no repeat), TRACK (loop current track), PLAYLIST (loop all tracks).</description>
+        <state pattern="%s">
+            <options>
+                <option value="OFF">Off</option>
+                <option value="TRACK">Repeat Track</option>
+                <option value="PLAYLIST">Repeat Playlist</option>
+            </options>
+        </state>
+    </channel-type>
+
+    <channel-type id="shuffle">
+        <item-type>Switch</item-type>
+        <label>Shuffle</label>
+        <description>Shuffle playback order within the queue.</description>
         <state pattern="%s"/>
     </channel-type>
 

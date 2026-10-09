@@ -5,6 +5,8 @@ import static org.openhab.binding.soundcloud.internal.SoundCloudBindingConstants
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +25,7 @@ import org.openhab.binding.soundcloud.internal.config.SoundCloudConfiguration;
 import org.openhab.core.events.EventPublisher;
 import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
@@ -71,6 +74,13 @@ public class SoundCloudHandler extends BaseThingHandler {
     private static final int MAX_REFRESH_RETRIES = 3;
     private volatile int elapsedSeconds = 0;
     private int trackDurationSeconds = 0;
+
+    // Queue / playback mode state
+    private List<SoundCloudTrack> currentQueue = new ArrayList<>();
+    private int currentQueueIndex = -1;
+    private boolean shuffleEnabled = false;
+    private String repeatMode = "OFF"; // OFF, TRACK, PLAYLIST
+    private List<Integer> shuffleOrder = new ArrayList<>();
 
     public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService,
             EventPublisher eventPublisher) {
@@ -315,6 +325,7 @@ public class SoundCloudHandler extends BaseThingHandler {
             updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
             if (trackDurationSeconds > 0 && elapsedSeconds >= trackDurationSeconds) {
                 stopProgressTimer();
+                handleNext();
             }
         }, 1, 1, TimeUnit.SECONDS);
     }
@@ -363,6 +374,12 @@ public class SoundCloudHandler extends BaseThingHandler {
                 break;
             case CHANNEL_ELAPSED_TIME:
                 handleSeek(command.toString());
+                break;
+            case CHANNEL_REPEAT:
+                handleRepeatCommand(command.toString().toUpperCase());
+                break;
+            case CHANNEL_SHUFFLE:
+                handleShuffleCommand(command.toString().toUpperCase());
                 break;
             default:
                 logger.debug("Kein Handler für Channel {}", channelUID.getId());
@@ -413,24 +430,12 @@ public class SoundCloudHandler extends BaseThingHandler {
         scheduler.submit(() -> {
             try {
                 SoundCloudTrack track = client.getTrackV2(trackId);
-                String streamUrl = client.resolveStreamUrlV2(track);
-                if (streamUrl == null) {
-                    logger.warn("Kein Stream-URL für Track {} ({})", trackId, track.title);
-                    return;
-                }
-                currentTrack = track;
-                currentStreamUrl = streamUrl;
-                try {
-                    currentProgressiveUrl = client.resolveProgressiveUrlV2(track);
-                } catch (Exception e) {
-                    logger.debug("Progressive URL nicht verfügbar: {}", e.getMessage());
-                    currentProgressiveUrl = null;
-                }
-                playbackState = "PLAYING";
-                trackDurationSeconds = (int) (track.duration / 1000);
-                applyTrackToChannels(track, streamUrl);
-                resetProgress();
-                startProgressTimer();
+                // Single-Track-Queue aufbauen
+                currentQueue = new ArrayList<>();
+                currentQueue.add(track);
+                currentQueueIndex = 0;
+                shuffleOrder.clear();
+                playTrackInternal(client, track, 0);
             } catch (Exception e) {
                 logger.warn("Track {} konnte nicht geladen werden: {}", trackId, e.getMessage());
             }
@@ -444,11 +449,169 @@ public class SoundCloudHandler extends BaseThingHandler {
         scheduler.submit(() -> {
             try {
                 SoundCloudPlaylist playlist = client.getPlaylist(playlistId);
-                if (!playlist.tracks.isEmpty()) loadTrack(playlist.tracks.get(0).id);
+                if (playlist.tracks.isEmpty()) return;
+                currentQueue = new ArrayList<>(playlist.tracks);
+                currentQueueIndex = 0;
+                if (shuffleEnabled) {
+                    buildShuffleOrder();
+                    loadTrackFromQueue(shuffleOrder.get(0));
+                } else {
+                    loadTrackFromQueue(0);
+                }
+                logger.info("Playlist {} geladen: {} Tracks", playlistId, currentQueue.size());
             } catch (Exception e) {
                 logger.warn("Playlist {} konnte nicht geladen werden: {}", playlistId, e.getMessage());
             }
         });
+    }
+
+    private void loadTrackFromQueue(int index) {
+        if (index < 0 || index >= currentQueue.size()) return;
+        SoundCloudTrack queueTrack = currentQueue.get(index);
+        currentQueueIndex = index;
+        SoundCloudApiClient client = apiClient;
+        if (client == null) return;
+        scheduler.submit(() -> {
+            try {
+                SoundCloudTrack track = client.getTrackV2(queueTrack.id);
+                currentQueue.set(index, track); // aktualisierte Metadaten speichern
+                playTrackInternal(client, track, index);
+            } catch (Exception e) {
+                logger.warn("Queue-Track {} konnte nicht geladen werden: {}", queueTrack.id, e.getMessage());
+            }
+        });
+    }
+
+    private void playTrackInternal(SoundCloudApiClient client, SoundCloudTrack track, int queueIndex) {
+        try {
+            String streamUrl = client.resolveStreamUrlV2(track);
+            if (streamUrl == null) {
+                logger.warn("Kein Stream-URL für Track {} ({})", track.id, track.title);
+                return;
+            }
+            currentTrack = track;
+            currentStreamUrl = streamUrl;
+            currentQueueIndex = queueIndex;
+            try {
+                currentProgressiveUrl = client.resolveProgressiveUrlV2(track);
+            } catch (Exception e) {
+                logger.debug("Progressive URL nicht verfügbar: {}", e.getMessage());
+                currentProgressiveUrl = null;
+            }
+            playbackState = "PLAYING";
+            trackDurationSeconds = (int) (track.duration / 1000);
+            applyTrackToChannels(track, streamUrl);
+            updateQueueChannels();
+            resetProgress();
+            startProgressTimer();
+        } catch (Exception e) {
+            logger.warn("playTrackInternal für Track {} fehlgeschlagen: {}", track.id, e.getMessage());
+        }
+    }
+
+    private void handleNext() {
+        if (currentQueue.isEmpty()) return;
+        if ("TRACK".equals(repeatMode)) {
+            loadTrackFromQueue(currentQueueIndex);
+            return;
+        }
+        int nextIndex;
+        if (shuffleEnabled && !shuffleOrder.isEmpty()) {
+            int currentShufflePos = shuffleOrder.indexOf(currentQueueIndex);
+            int nextShufflePos = currentShufflePos + 1;
+            if (nextShufflePos >= shuffleOrder.size()) {
+                if ("PLAYLIST".equals(repeatMode)) {
+                    nextShufflePos = 0;
+                } else {
+                    logger.debug("Queue-Ende erreicht (Shuffle, kein Repeat)");
+                    return;
+                }
+            }
+            nextIndex = shuffleOrder.get(nextShufflePos);
+        } else {
+            nextIndex = currentQueueIndex + 1;
+            if (nextIndex >= currentQueue.size()) {
+                if ("PLAYLIST".equals(repeatMode)) {
+                    nextIndex = 0;
+                } else {
+                    logger.debug("Queue-Ende erreicht (kein Repeat)");
+                    return;
+                }
+            }
+        }
+        logger.info("Nächster Track: Queue-Index {} → {}", currentQueueIndex, nextIndex);
+        loadTrackFromQueue(nextIndex);
+    }
+
+    private void handlePrevious() {
+        if (currentQueue.isEmpty()) return;
+        // Mehr als 3 Sekunden gespielt → zum Anfang des aktuellen Tracks
+        if (elapsedSeconds > 3 && currentQueue.size() == 1) {
+            handleSeek("0");
+            return;
+        }
+        if ("TRACK".equals(repeatMode)) {
+            loadTrackFromQueue(currentQueueIndex);
+            return;
+        }
+        int prevIndex;
+        if (shuffleEnabled && !shuffleOrder.isEmpty()) {
+            int currentShufflePos = shuffleOrder.indexOf(currentQueueIndex);
+            int prevShufflePos = currentShufflePos - 1;
+            if (prevShufflePos < 0) {
+                prevShufflePos = "PLAYLIST".equals(repeatMode) ? shuffleOrder.size() - 1 : 0;
+            }
+            prevIndex = shuffleOrder.get(prevShufflePos);
+        } else {
+            prevIndex = currentQueueIndex - 1;
+            if (prevIndex < 0) {
+                prevIndex = "PLAYLIST".equals(repeatMode) ? currentQueue.size() - 1 : 0;
+            }
+        }
+        logger.info("Vorheriger Track: Queue-Index {} → {}", currentQueueIndex, prevIndex);
+        loadTrackFromQueue(prevIndex);
+    }
+
+    private void handleRepeatCommand(String mode) {
+        if ("OFF".equals(mode) || "TRACK".equals(mode) || "PLAYLIST".equals(mode)) {
+            repeatMode = mode;
+            updateState(CHANNEL_REPEAT, new StringType(repeatMode));
+            logger.info("Repeat-Modus: {}", repeatMode);
+        }
+    }
+
+    private void handleShuffleCommand(String cmd) {
+        boolean newShuffle = "ON".equals(cmd);
+        if (newShuffle == shuffleEnabled) return;
+        shuffleEnabled = newShuffle;
+        if (shuffleEnabled && !currentQueue.isEmpty()) {
+            buildShuffleOrder();
+        } else {
+            shuffleOrder.clear();
+        }
+        updateState(CHANNEL_SHUFFLE, shuffleEnabled ? OnOffType.ON : OnOffType.OFF);
+        logger.info("Shuffle: {}", shuffleEnabled ? "ON" : "OFF");
+    }
+
+    private void buildShuffleOrder() {
+        shuffleOrder = new ArrayList<>();
+        for (int i = 0; i < currentQueue.size(); i++) {
+            shuffleOrder.add(i);
+        }
+        Collections.shuffle(shuffleOrder);
+        // Aktuellen Track an Position 0 setzen
+        int pos = shuffleOrder.indexOf(currentQueueIndex);
+        if (pos > 0) {
+            shuffleOrder.remove(pos);
+            shuffleOrder.add(0, currentQueueIndex);
+        }
+    }
+
+    private void updateQueueChannels() {
+        updateState(CHANNEL_QUEUE_INDEX, new DecimalType(currentQueueIndex + 1));
+        updateState(CHANNEL_QUEUE_SIZE, new DecimalType(currentQueue.size()));
+        updateState(CHANNEL_REPEAT, new StringType(repeatMode));
+        updateState(CHANNEL_SHUFFLE, shuffleEnabled ? OnOffType.ON : OnOffType.OFF);
     }
 
     // -------------------------------------------------------------------------
@@ -478,6 +641,12 @@ public class SoundCloudHandler extends BaseThingHandler {
                 updateState(CHANNEL_TITLE, new StringType(""));
                 updateState(CHANNEL_ARTIST, new StringType(""));
                 resetProgress();
+                break;
+            case "NEXT":
+                handleNext();
+                break;
+            case "PREVIOUS":
+                handlePrevious();
                 break;
         }
     }
