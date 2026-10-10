@@ -289,6 +289,7 @@ Configure the rule triggers as **Item Command** on: `SC_CC_Control`, `SC_CC_Stop
 | v1.4.10 | ✅ done | Seek: 30-second skip and slider via progressive MP3 + HTTP Range-Request |
 | v1.5.0  | ✅ done | Playlist queue: next / previous, auto-advance, repeat (OFF/TRACK/PLAYLIST), shuffle |
 | v1.5.4  | ✅ done | Stability: removed experimental playlist-browse feature |
+| v1.5.5  | ✅ done | Widget redesign: Spotify-like layout — cover + meta left, search right, full-width player bar; responsive mobile support |
 | v1.6.x  | planned | Likes / stream feed — browse your own liked tracks |
 | v2.0.0  | planned | Submit to openHAB add-ons repository |
 
