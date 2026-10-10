@@ -54,7 +54,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ### 1. Download the JAR
 
-Download `org.openhab.binding.soundcloud-1.5.0.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
+Download `org.openhab.binding.soundcloud-1.5.4.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
 
 openHAB detects and loads the bundle automatically — no restart needed. Check **Settings → Bindings** to confirm it appears.
 
@@ -288,6 +288,7 @@ Configure the rule triggers as **Item Command** on: `SC_CC_Control`, `SC_CC_Stop
 | v1.4.1  | ✅ done | Progress bar: elapsed time channel, MM:SS display in widget |
 | v1.4.10 | ✅ done | Seek: 30-second skip and slider via progressive MP3 + HTTP Range-Request |
 | v1.5.0  | ✅ done | Playlist queue: next / previous, auto-advance, repeat (OFF/TRACK/PLAYLIST), shuffle |
+| v1.5.4  | ✅ done | Stability: removed experimental playlist-browse feature |
 | v1.6.x  | planned | Likes / stream feed — browse your own liked tracks |
 | v2.0.0  | planned | Submit to openHAB add-ons repository |
 

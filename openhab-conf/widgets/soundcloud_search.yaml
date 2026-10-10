@@ -64,6 +64,12 @@ props:
       type: TEXT
       required: false
       context: item
+    - name: seekPctItem
+      label: Seek Percent Item
+      description: Number Item SoundCloud2_Seek_Pct (0-100%) — fixes slider on long tracks
+      type: TEXT
+      required: false
+      context: item
     - name: chromecastTag
       label: Chromecast Item Tag
       description: "Tag on your Chromecast playuri items (default: Chromecast)"
@@ -75,27 +81,15 @@ props:
       type: TEXT
       required: false
       context: item
-    - name: queueIndexItem
-      label: Queue Index Item
-      description: Number Item linked to soundcloud:account:...:player#queue-index
-      type: TEXT
-      required: false
-      context: item
-    - name: queueSizeItem
-      label: Queue Size Item
-      description: Number Item linked to soundcloud:account:...:player#queue-size
+    - name: shuffleItem
+      label: Shuffle Item
+      description: Switch Item linked to soundcloud:account:...:player#shuffle
       type: TEXT
       required: false
       context: item
     - name: repeatItem
-      label: Repeat Mode Item
-      description: String Item linked to soundcloud:account:...:player#repeat (OFF/TRACK/PLAYLIST)
-      type: TEXT
-      required: false
-      context: item
-    - name: shuffleItem
-      label: Shuffle Item
-      description: Switch Item linked to soundcloud:account:...:player#shuffle
+      label: Repeat Item
+      description: String Item linked to soundcloud:account:...:player#repeat (OFF/PLAYLIST/TRACK)
       type: TEXT
       required: false
       context: item
@@ -103,423 +97,399 @@ timestamp: 2026-05-19T00:00:00Z
 component: f7-card
 config:
   style:
-    margin: 0
+    margin: "0"
+    background: "#111118"
+    overflow: hidden
+    display: flex
+    flexDirection: column
+    borderRadius: 12px
 slots:
   default:
 
-    # ── Orange Header ─────────────────────────────────────────────────────────
-    - component: f7-card-header
+    # ── Hauptbereich: Links Cover/Meta | Rechts Suche/Ergebnisse ──────────────
+    - component: f7-row
       config:
+        noGap: true
         style:
-          background: "#ff5500"
-          color: white
-          fontWeight: "700"
-          fontSize: 18px
-          padding: 12px 16px
+          flex: "1"
+          overflow: hidden
+          minHeight: "0"
+          flexWrap: wrap
+          alignItems: stretch
       slots:
         default:
+
+          # ── Linke Spalte: Cover + Titel + Artist + Duration + CC-Auswahl ──
+          - component: f7-col
+            config:
+              style:
+                flex: "1 1 320px"
+                maxWidth: 435px
+                padding: 14px
+                display: flex
+                flexDirection: column
+                gap: 10px
+                borderRight: "1px solid rgba(255,255,255,0.08)"
+                borderBottom: "1px solid rgba(255,255,255,0.05)"
+                overflow: hidden
+                boxSizing: border-box
+            slots:
+              default:
+                # Cover Art
+                - component: oh-image
+                  config:
+                    item: "=props.artworkItem"
+                    style:
+                      display: block
+                      width: 100%
+                      aspectRatio: "1 / 1"
+                      height: auto
+                      borderRadius: 8px
+                      objectFit: cover
+                      background: "#1a1a2a"
+                # Titel
+                - component: f7-chip
+                  config:
+                    text: "=@@props.titleItem || '—'"
+                    style:
+                      fontSize: 14px
+                      fontWeight: "600"
+                      color: "#fff"
+                      backgroundColor: transparent
+                      padding: "0"
+                      margin: "0"
+                      display: block
+                      whiteSpace: nowrap
+                      overflow: hidden
+                      textOverflow: ellipsis
+                      maxWidth: 100%
+                # Artist
+                - component: f7-chip
+                  config:
+                    text: "=@@props.artistItem || '—'"
+                    style:
+                      fontSize: 12px
+                      color: "#ff5500"
+                      backgroundColor: transparent
+                      padding: "0"
+                      margin: "0"
+                      display: block
+                # Duration
+                - component: f7-chip
+                  config:
+                    text: "=((+(@@props.durationItem)||0)/60|0)+' Min.'"
+                    style:
+                      fontSize: 10px
+                      color: "#555"
+                      backgroundColor: transparent
+                      padding: "0"
+                      margin: "0"
+                # Chromecast Auswahl
+                - component: f7-block-title
+                  config:
+                    style:
+                      fontSize: 9px
+                      color: "#333"
+                      textTransform: uppercase
+                      letterSpacing: "0.8px"
+                      margin: "8px 0 4px 0"
+                    text: "▶ Abspielen auf"
+                - component: f7-row
+                  config:
+                    style:
+                      flexWrap: wrap
+                      gap: 6px
+                  slots:
+                    default:
+                      - component: oh-repeater
+                        config:
+                          for: cc
+                          fragment: true
+                          sourceType: itemsWithTags
+                          itemTags: "=props.chromecastTag || 'Chromecast'"
+                        slots:
+                          default:
+                            - component: oh-list-item
+                              config:
+                                title: "=loop.cc.label"
+                                action: command
+                                actionItem: "=props.chromecastTargetItem"
+                                actionCommand: "=loop.cc.name"
+                                style:
+                                  fontWeight: "=(@@props.chromecastTargetItem === loop.cc.name) ? '600' : '400'"
+                                  color: "=(@@props.chromecastTargetItem === loop.cc.name) ? '#ff5500' : '#666'"
+                                  fontSize: 11px
+                                  padding: "2px 0"
+
+          # ── Rechte Spalte: Suche + Ergebnisse ─────────────────────────────
+          - component: f7-col
+            config:
+              style:
+                flex: "1 1 280px"
+                display: flex
+                flexDirection: column
+                overflow: hidden
+                minWidth: "0"
+            slots:
+              default:
+
+                # Suchfeld
+                - component: f7-card-content
+                  config:
+                    style:
+                      padding: "8px 12px"
+                      borderBottom: "1px solid rgba(255,255,255,0.08)"
+                      flexShrink: "0"
+                  slots:
+                    default:
+                      - component: f7-block-title
+                        config:
+                          style:
+                            fontSize: 9px
+                            color: "#444"
+                            textTransform: uppercase
+                            letterSpacing: "0.8px"
+                            margin: "0 0 5px 0"
+                          text: SoundCloud Suche
+                      - component: oh-input
+                        config:
+                          item: "=props.queryItem"
+                          placeholder: "Künstler oder Titel..."
+                          clearButton: true
+                          sendButton: true
+                          style:
+                            fontSize: 11px
+                            border: "1px solid rgba(255,85,0,0.45)"
+                            borderRadius: 4px
+                            padding: "3px 8px"
+                            background: "#1a1a2a"
+                            width: 100%
+                            boxSizing: border-box
+
+                # Ergebnisse Label
+                - component: f7-block-title
+                  config:
+                    style:
+                      fontSize: 9px
+                      color: "#333"
+                      textTransform: uppercase
+                      letterSpacing: "0.8px"
+                      margin: "6px 12px 2px"
+                      flexShrink: "0"
+                    text: Ergebnisse
+
+                # Ergebnisliste (max 8 sichtbar, Rest scrollbar)
+                - component: f7-list
+                  config:
+                    noHairlines: true
+                    style:
+                      maxHeight: 352px
+                      overflowY: auto
+                      margin: "0"
+                      padding: "2px 0"
+                  slots:
+                    default:
+                      - component: oh-repeater
+                        config:
+                          for: track
+                          fragment: true
+                          sourceType: array
+                          in: "=(@@props.resultsItem || '').startsWith('[') ? JSON.parse(@@props.resultsItem) : []"
+                        slots:
+                          default:
+                            - component: oh-list-item
+                              config:
+                                action: command
+                                actionItem: "=props.trackIdItem"
+                                actionCommand: "=loop.track.id"
+                                title: "=loop.track.title"
+                                subtitle: "=loop.track.artist"
+                                style:
+                                  backgroundImage: "='url('+loop.track.artwork+')'"
+                                  backgroundSize: 30px 30px
+                                  backgroundRepeat: no-repeat
+                                  backgroundPosition: 12px center
+                                  minHeight: 44px
+                                  paddingLeft: 50px
+                                  fontSize: 12px
+                                  boxSizing: border-box
+
+    # ── Player Bar (volle Breite) ──────────────────────────────────────────────
+    - component: f7-card-content
+      config:
+        style:
+          borderTop: "1px solid rgba(255,255,255,0.08)"
+          padding: "9px 14px 11px"
+          background: "#0c0c13"
+          flexShrink: "0"
+      slots:
+        default:
+
+          # Fortschrittszeile
           - component: f7-row
             config:
               style:
                 alignItems: center
-                gap: 10px
-            slots:
-              default:
-                - component: f7-icon
-                  config:
-                    f7: music_note_2
-                    size: 22
-                    color: white
-                - component: f7-block-title
-                  config:
-                    style:
-                      color: white
-                      fontSize: 18px
-                      margin: 0
-                    text: SoundCloud
-
-    # ── Suchfeld ──────────────────────────────────────────────────────────────
-    - component: f7-card-content
-      config:
-        style:
-          padding: 12px 16px 8px 16px
-      slots:
-        default:
-          - component: oh-input
-            config:
-              item: "=props.queryItem"
-              placeholder: Künstler oder Titel...
-              clearButton: true
-              sendButton: true
-              style:
-                border: "1px solid #ff5500"
-                borderRadius: 20px
-                padding: 6px 14px
-                width: 100%
-                boxSizing: border-box
-
-    # ── Suchergebnisse ────────────────────────────────────────────────────────
-    - component: f7-card-content
-      config:
-        style:
-          padding: 0
-          minHeight: 300px
-          maxHeight: 420px
-          overflowY: auto
-      slots:
-        default:
-          - component: f7-list
-            config:
-              noHairlines: true
-              style:
-                margin: 0
-            slots:
-              default:
-                - component: oh-repeater
-                  config:
-                    for: track
-                    fragment: true
-                    sourceType: array
-                    in: "=(@@props.resultsItem || '').startsWith('[') ? JSON.parse(@@props.resultsItem) : []"
-                  slots:
-                    default:
-                      - component: oh-list-item
-                        config:
-                          action: command
-                          actionItem: "=props.trackIdItem"
-                          actionCommand: "=loop.track.id"
-                          title: "=loop.track.title"
-                          subtitle: "=loop.track.artist"
-                          style:
-                            backgroundImage: "='url('+loop.track.artwork+')'"
-                            backgroundSize: 64px 64px
-                            backgroundRepeat: no-repeat
-                            backgroundPosition: 12px center
-                            minHeight: 80px
-                            paddingLeft: 88px
-                            boxSizing: border-box
-
-    # ── Aktueller Track ───────────────────────────────────────────────────────
-    - component: f7-card-content
-      config:
-        style:
-          borderTop: "2px solid #ff5500"
-          padding: 12px 16px 0 16px
-      slots:
-        default:
-          - component: f7-row
-            config:
-              style:
-                alignItems: flex-start
-                gap: 16px
-                flexWrap: wrap
-            slots:
-              default:
-                # Cover-Art
-                - component: f7-col
-                  config:
-                    style:
-                      flex: "0 0 320px"
-                      maxWidth: "100%"
-                  slots:
-                    default:
-                      - component: oh-image
-                        config:
-                          item: "=props.artworkItem"
-                          style:
-                            display: block
-                            width: "100%"
-                            aspectRatio: "1 / 1"
-                            height: auto
-                            borderRadius: 12px
-                            objectFit: cover
-                            boxShadow: "0 4px 16px rgba(0,0,0,0.4)"
-                # Titel + Artist + Playback-Buttons
-                - component: f7-col
-                  config:
-                    style:
-                      flex: "1 1 220px"
-                      minWidth: "220px"
-                      overflow: hidden
-                      display: flex
-                      flexDirection: column
-                      gap: 4px
-                  slots:
-                    default:
-                      - component: f7-row
-                        config:
-                          style:
-                            alignItems: center
-                            gap: 8px
-                        slots:
-                          default:
-                            - component: oh-label
-                              config:
-                                item: "=props.titleItem"
-                                style:
-                                  fontWeight: "700"
-                                  fontSize: 16px
-                                  flex: "1"
-                                  whiteSpace: nowrap
-                                  overflow: hidden
-                                  textOverflow: ellipsis
-                            # Track-Counter (z.B. 3/12)
-                            - component: f7-chip
-                              config:
-                                visible: "=!!props.queueSizeItem && +(@@props.queueSizeItem) > 1"
-                                text: "=(+(@@props.queueIndexItem)||1)+' / '+(+(@@props.queueSizeItem)||1)"
-                                style:
-                                  fontSize: 11px
-                                  color: "#888"
-                                  backgroundColor: transparent
-                                  padding: "0"
-                      - component: oh-label
-                        config:
-                          item: "=props.artistItem"
-                          style:
-                            color: "#ff5500"
-                            fontSize: 14px
-                            display: block
-                      # Progress Bar
-                      - component: f7-row
-                        config:
-                          visible: "=!!props.elapsedItem && !!props.durationItem"
-                          style:
-                            alignItems: center
-                            gap: 8px
-                            marginTop: 10px
-                        slots:
-                          default:
-                            # Elapsed MM:SS
-                            - component: f7-chip
-                              config:
-                                text: "=((+(@@props.elapsedItem)||0)/60|0)+':'+(((+(@@props.elapsedItem)||0)%60)<10?'0':'')+((+(@@props.elapsedItem)||0)%60)"
-                                style:
-                                  flex: "0 0 auto"
-                                  fontSize: 16px
-                                  fontWeight: "700"
-                                  color: "#ff5500"
-                                  backgroundColor: transparent
-                                  fontVariantNumeric: tabular-nums
-                                  padding: "0"
-                                  margin: "0"
-                            # Seek-Slider
-                            - component: oh-slider
-                              config:
-                                item: "=props.elapsedItem"
-                                min: 0
-                                max: "=+(@@props.durationItem)||300"
-                                step: 10
-                                style:
-                                  flex: "1"
-                                  "--f7-range-bar-active-bg-color": "#ff5500"
-                                  "--f7-range-knob-color": "#ff5500"
-                            # Duration MM:SS
-                            - component: f7-chip
-                              config:
-                                text: "=((+(@@props.durationItem)||0)/60|0)+':'+(((+(@@props.durationItem)||0)%60)<10?'0':'')+((+(@@props.durationItem)||0)%60)"
-                                style:
-                                  flex: "0 0 auto"
-                                  fontSize: 11px
-                                  color: "#888"
-                                  backgroundColor: transparent
-                                  fontVariantNumeric: tabular-nums
-                                  padding: "0"
-                                  margin: "0"
-                      # Previous / Play / Pause / Stop / Next / Mute
-                      - component: f7-row
-                        config:
-                          style:
-                            gap: 8px
-                            marginTop: 12px
-                            justifyContent: flex-start
-                            alignItems: center
-                        slots:
-                          default:
-                            # Previous
-                            - component: oh-button
-                              config:
-                                visible: "=!!props.stateItem"
-                                iconF7: backward_fill
-                                iconSize: 28
-                                style:
-                                  color: "#555"
-                                action: command
-                                actionItem: "=props.stateItem"
-                                actionCommand: PREVIOUS
-                            # Play → sendet Stream-URL direkt an ausgewähltes Chromecast
-                            - component: oh-button
-                              config:
-                                iconF7: play_fill
-                                iconSize: 32
-                                style:
-                                  color: green
-                                action: command
-                                actionItem: "=@@props.chromecastTargetItem"
-                                actionCommand: "=@@props.streamUrlItem"
-                            # Pause → SC_CC_Control (Routing-Regel leitet weiter)
-                            - component: oh-button
-                              config:
-                                iconF7: pause_fill
-                                iconSize: 32
-                                style:
-                                  color: orange
-                                action: command
-                                actionItem: SC_CC_Control
-                                actionCommand: PAUSE
-                            # Stop → SC_CC_Stop (Routing-Regel leitet weiter)
-                            - component: oh-button
-                              config:
-                                iconF7: stop_fill
-                                iconSize: 32
-                                style:
-                                  color: red
-                                action: command
-                                actionItem: SC_CC_Stop
-                                actionCommand: "ON"
-                            # Next
-                            - component: oh-button
-                              config:
-                                visible: "=!!props.stateItem"
-                                iconF7: forward_fill
-                                iconSize: 28
-                                style:
-                                  color: "#555"
-                                action: command
-                                actionItem: "=props.stateItem"
-                                actionCommand: NEXT
-                            # Mute Toggle → SC_CC_Mute (Routing-Regel leitet weiter)
-                            - component: oh-button
-                              config:
-                                iconF7: "=(items['SC_CC_Mute'].state === 'ON') ? 'speaker_slash_fill' : 'speaker_2_fill'"
-                                iconSize: 32
-                                style:
-                                  color: "=(items['SC_CC_Mute'].state === 'ON') ? '#ff5500' : 'gray'"
-                                action: command
-                                actionItem: SC_CC_Mute
-                                actionCommand: "=(items['SC_CC_Mute'].state === 'ON') ? 'OFF' : 'ON'"
-                      # Shuffle + Repeat
-                      - component: f7-row
-                        config:
-                          visible: "=!!props.shuffleItem || !!props.repeatItem"
-                          style:
-                            gap: 8px
-                            marginTop: 8px
-                            alignItems: center
-                        slots:
-                          default:
-                            # Shuffle
-                            - component: oh-button
-                              config:
-                                visible: "=!!props.shuffleItem"
-                                iconF7: shuffle
-                                iconSize: 22
-                                style:
-                                  color: "=(@@props.shuffleItem === 'ON') ? '#ff5500' : '#aaa'"
-                                  border: "=(@@props.shuffleItem === 'ON') ? '1px solid #ff5500' : '1px solid #ccc'"
-                                  borderRadius: 6px
-                                  padding: "4px 8px"
-                                action: command
-                                actionItem: "=props.shuffleItem"
-                                actionCommand: "=(@@props.shuffleItem === 'ON') ? 'OFF' : 'ON'"
-                            # Repeat
-                            - component: oh-button
-                              config:
-                                visible: "=!!props.repeatItem"
-                                iconF7: "=(@@props.repeatItem === 'TRACK') ? 'repeat_1' : 'repeat'"
-                                iconSize: 22
-                                style:
-                                  color: "=(@@props.repeatItem === 'OFF' || !@@props.repeatItem) ? '#aaa' : '#ff5500'"
-                                  border: "=(@@props.repeatItem === 'OFF' || !@@props.repeatItem) ? '1px solid #ccc' : '1px solid #ff5500'"
-                                  borderRadius: 6px
-                                  padding: "4px 8px"
-                                action: command
-                                actionItem: "=props.repeatItem"
-                                actionCommand: "=(@@props.repeatItem === 'OFF' || !@@props.repeatItem) ? 'PLAYLIST' : (@@props.repeatItem === 'PLAYLIST') ? 'TRACK' : 'OFF'"
-                            # Repeat-Label
-                            - component: f7-chip
-                              config:
-                                visible: "=!!props.repeatItem && @@props.repeatItem !== 'OFF'"
-                                text: "=(@@props.repeatItem === 'TRACK') ? 'Track' : 'Playlist'"
-                                style:
-                                  fontSize: 11px
-                                  color: "#ff5500"
-                                  backgroundColor: transparent
-                                  padding: "0"
-                      # Volume Slider → SC_CC_Volume (Sync-Regel hält Wert aktuell)
-                      - component: f7-row
-                        config:
-                          style:
-                            alignItems: center
-                            gap: 8px
-                            marginTop: 12px
-                        slots:
-                          default:
-                            - component: f7-icon
-                              config:
-                                f7: speaker_fill
-                                size: 18
-                                color: gray
-                            - component: oh-slider
-                              config:
-                                item: SC_CC_Volume
-                                min: 0
-                                max: 100
-                                step: 5
-                                style:
-                                  flex: "1"
-                            - component: f7-icon
-                              config:
-                                f7: speaker_3_fill
-                                size: 18
-                                color: gray
-
-    # ── Chromecast Chips ──────────────────────────────────────────────────────
-    - component: f7-card-content
-      config:
-        style:
-          padding: 10px 16px 14px 16px
-          borderTop: "1px solid #eee"
-      slots:
-        default:
-          - component: f7-block-title
-            config:
-              style:
-                color: "#888"
-                fontSize: 11px
-                textTransform: uppercase
-                letterSpacing: "0.8px"
-                margin: "0 0 8px 0"
-              text: "▶ Abspielen auf"
-          - component: f7-row
-            config:
-              style:
-                flexWrap: wrap
                 gap: 8px
+                marginBottom: 8px
             slots:
               default:
-                - component: oh-repeater
+                # Elapsed MM:SS
+                - component: f7-chip
                   config:
-                    for: cc
-                    fragment: true
-                    sourceType: itemsWithTags
-                    itemTags: "=props.chromecastTag || 'Chromecast'"
+                    text: "=((+(@@props.elapsedItem)||0)/60|0)+':'+(((+(@@props.elapsedItem)||0)%60|0)<10?'0':'')+((+(@@props.elapsedItem)||0)%60|0)"
+                    style:
+                      fontSize: 12px
+                      fontWeight: "600"
+                      color: "#ff5500"
+                      backgroundColor: transparent
+                      fontVariantNumeric: tabular-nums
+                      padding: "0"
+                      margin: "0"
+                      flexShrink: "0"
+                # -30s
+                - component: oh-button
+                  config:
+                    iconF7: gobackward_30
+                    iconSize: 18
+                    style:
+                      color: "#777"
+                      flexShrink: "0"
+                    action: command
+                    actionItem: "=props.elapsedItem"
+                    actionCommand: "=Math.max(0,(+(@@props.elapsedItem)||0)-30)"
+                # Seek Slider
+                - component: oh-slider
+                  config:
+                    item: "=props.seekPctItem ? props.seekPctItem : ((props.elapsedItem||'').replace(/_Elapsed$/,'_Seek_Pct') && items[(props.elapsedItem||'').replace(/_Elapsed$/,'_Seek_Pct')] ? (props.elapsedItem||'').replace(/_Elapsed$/,'_Seek_Pct') : props.elapsedItem)"
+                    min: 0
+                    max: "=props.seekPctItem ? 100 : (+(@@props.durationItem)||300)"
+                    step: "=props.seekPctItem ? 1 : 10"
+                    style:
+                      flex: "1"
+                      "--f7-range-bar-active-bg-color": "#ff5500"
+                      "--f7-range-knob-color": "#ff5500"
+                      "--f7-range-bar-bg-color": "#2a2a3a"
+                # +30s
+                - component: oh-button
+                  config:
+                    iconF7: goforward_30
+                    iconSize: 18
+                    style:
+                      color: "#777"
+                      flexShrink: "0"
+                    action: command
+                    actionItem: "=props.elapsedItem"
+                    actionCommand: "=(+(@@props.elapsedItem)||0)+30"
+                # Duration MM:SS
+                - component: f7-chip
+                  config:
+                    text: "=((+(@@props.durationItem)||0)/60|0)+':'+(((+(@@props.durationItem)||0)%60|0)<10?'0':'')+((+(@@props.durationItem)||0)%60|0)"
+                    style:
+                      fontSize: 10px
+                      color: "#444"
+                      backgroundColor: transparent
+                      fontVariantNumeric: tabular-nums
+                      padding: "0"
+                      margin: "0"
+                      flexShrink: "0"
+
+          # Steuerungszeile
+          - component: f7-row
+            config:
+              style:
+                alignItems: center
+                justifyContent: space-between
+                gap: 4px
+            slots:
+              default:
+                # Linke Gruppe: Shuffle + Play + Pause + Stop + Repeat + Mute + Volume
+                - component: f7-row
+                  config:
+                    style:
+                      alignItems: center
+                      gap: 2px
                   slots:
                     default:
-                      - component: oh-list-item
+                      # Shuffle
+                      - component: oh-button
                         config:
-                          title: "=loop.cc.label"
-                          action: command
-                          actionItem: "=props.chromecastTargetItem"
-                          actionCommand: "=loop.cc.name"
+                          iconF7: shuffle
+                          iconSize: 20
                           style:
-                            fontWeight: "=(@@props.chromecastTargetItem === loop.cc.name) ? '700' : '400'"
-                            color: "=(@@props.chromecastTargetItem === loop.cc.name) ? '#ff5500' : 'inherit'"
-                        slots:
-                          after:
-                            - component: oh-icon
-                              config:
-                                icon: "=(@@props.chromecastTargetItem === loop.cc.name) ? 'iconify:mdi:cast-connected' : 'iconify:mdi:cast'"
-                                color: "=(@@props.chromecastTargetItem === loop.cc.name) ? '#ff5500' : '#aaa'"
-                                width: 24px
-                                height: 24px
+                            color: "=(props.shuffleItem && items[props.shuffleItem] && items[props.shuffleItem].state === 'ON') ? '#ff5500' : '#777'"
+                          action: command
+                          actionItem: "=props.shuffleItem"
+                          actionCommand: "=(props.shuffleItem && items[props.shuffleItem] && items[props.shuffleItem].state === 'ON') ? 'OFF' : 'ON'"
+                      # Play
+                      - component: oh-button
+                        config:
+                          iconF7: play_fill
+                          iconSize: 28
+                          style:
+                            color: "#fff"
+                          action: command
+                          actionItem: "=@@props.chromecastTargetItem"
+                          actionCommand: "=@@props.streamUrlItem"
+                      # Pause
+                      - component: oh-button
+                        config:
+                          iconF7: pause_fill
+                          iconSize: 28
+                          style:
+                            color: "#ff7733"
+                          action: command
+                          actionItem: SC_CC_Control
+                          actionCommand: PAUSE
+                      # Stop
+                      - component: oh-button
+                        config:
+                          iconF7: stop_fill
+                          iconSize: 22
+                          style:
+                            color: "#cc4400"
+                          action: command
+                          actionItem: SC_CC_Stop
+                          actionCommand: "ON"
+                      # Repeat
+                      - component: oh-button
+                        config:
+                          iconF7: "=(props.repeatItem && items[props.repeatItem] && items[props.repeatItem].state === 'TRACK') ? 'repeat_1' : 'repeat'"
+                          iconSize: 20
+                          style:
+                            color: "=(props.repeatItem && items[props.repeatItem] && (items[props.repeatItem].state === 'TRACK' || items[props.repeatItem].state === 'PLAYLIST')) ? '#ff5500' : '#777'"
+                          action: command
+                          actionItem: "=props.repeatItem"
+                          actionCommand: "=(props.repeatItem && items[props.repeatItem]) ? (items[props.repeatItem].state === 'OFF' ? 'PLAYLIST' : items[props.repeatItem].state === 'PLAYLIST' ? 'TRACK' : 'OFF') : 'OFF'"
+                      # Mute
+                      - component: oh-button
+                        config:
+                          iconF7: "=(items['SC_CC_Mute'].state === 'ON') ? 'speaker_slash_fill' : 'speaker_2_fill'"
+                          iconSize: 20
+                          style:
+                            color: "=(items['SC_CC_Mute'].state === 'ON') ? '#ff5500' : '#777'"
+                            marginLeft: 8px
+                          action: command
+                          actionItem: SC_CC_Mute
+                          actionCommand: "=(items['SC_CC_Mute'].state === 'ON') ? 'OFF' : 'ON'"
+                      # Volume Slider
+                      - component: oh-slider
+                        config:
+                          item: SC_CC_Volume
+                          min: 0
+                          max: 100
+                          step: 5
+                          style:
+                            width: 80px
+                            marginLeft: 6px
+                            "--f7-range-bar-bg-color": "#2a2a3a"
+
+                # Rechts: aktives Chromecast-Gerät
+                - component: f7-chip
+                  config:
+                    text: "=@@props.chromecastTargetItem ? (@@props.chromecastTargetItem).replace(/_Play_URI$|_URI_abspielen$/,'').replace(/_/g,' ') : '—'"
+                    style:
+                      fontSize: 11px
+                      color: "#ff5500"
+                      backgroundColor: "rgba(255,85,0,0.1)"
+                      border: "1px solid rgba(255,85,0,0.3)"
