@@ -32,11 +32,11 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 
 
-<img width="1080" height="3525" alt="Screenshot_20261010_025035_openHAB" src="https://github.com/user-attachments/assets/5af8d004-c809-40b3-bd3d-f4d26d8277b2" />
+
 <img width="1208" height="752" alt="Screenshot 2026-10-10 025408" src="https://github.com/user-attachments/assets/50237a19-a959-44cd-9b8f-5957d5b67538" />
 <img width="1200" height="741" alt="Screenshot 2026-10-10 025621" src="https://github.com/user-attachments/assets/f3798315-bdd3-43de-8cf4-38bc8c3d8164" />
 <img width="1060" height="3497" alt="Screenshot_20261010_024251_openHAB" src="https://github.com/user-attachments/assets/21209626-6c66-4253-9c13-f5a63804bef1" />
-
+<img width="1080" height="3525" alt="Screenshot_20261010_025035_openHAB" src="https://github.com/user-attachments/assets/5af8d004-c809-40b3-bd3d-f4d26d8277b2" />
 
 ---
 
