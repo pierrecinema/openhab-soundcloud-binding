@@ -8,7 +8,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ---
 
-## Features (v1.5.0)
+## Features (v1.5.5)
 
 - **Search** tracks by keyword — results appear instantly in the widget list
 - **Cover art** at 500 × 500 px displayed alongside title and artist
