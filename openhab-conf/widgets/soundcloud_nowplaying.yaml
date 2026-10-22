@@ -1,0 +1,665 @@
+uid: soundcloud_nowplaying
+tags:
+  - soundcloud
+props:
+  parameterGroups:
+    - name: player
+      label: Player
+    - name: search
+      label: Suche & Playlists
+    - name: cast
+      label: Chromecast
+  parameters:
+    - name: titleItem
+      label: Titel
+      description: String Item → player#title
+      type: TEXT
+      context: item
+      groupName: player
+      required: true
+    - name: artistItem
+      label: Künstler
+      description: String Item → player#artist
+      type: TEXT
+      context: item
+      groupName: player
+    - name: artworkItem
+      label: Cover-URL
+      description: String Item → player#artwork-url
+      type: TEXT
+      context: item
+      groupName: player
+    - name: stateItem
+      label: Wiedergabestatus
+      description: String Item → player#playback-state (PLAYING / PAUSED / STOPPED, auch NEXT / PREVIOUS)
+      type: TEXT
+      context: item
+      groupName: player
+      required: true
+    - name: trackIdItem
+      label: Track-ID
+      description: String Item → player#track-id
+      type: TEXT
+      context: item
+      groupName: player
+      required: true
+    - name: streamUrlItem
+      label: Stream-URL
+      description: String Item → player#stream-url
+      type: TEXT
+      context: item
+      groupName: player
+    - name: elapsedItem
+      label: Position
+      description: Number Item → player#elapsed-time
+      type: TEXT
+      context: item
+      groupName: player
+    - name: durationItem
+      label: Dauer
+      description: Number Item → player#duration
+      type: TEXT
+      context: item
+      groupName: player
+    - name: seekPctItem
+      label: Springen (%)
+      description: "Optional: Number Item 0–100 für den Fortschrittsbalken zum Springen (Regel soundcloud_seek_sync)"
+      type: TEXT
+      context: item
+      groupName: player
+    - name: queueIndexItem
+      label: Warteschlangen-Position
+      description: Number Item → player#queue-index
+      type: TEXT
+      context: item
+      groupName: player
+    - name: queueSizeItem
+      label: Warteschlangen-Größe
+      description: Number Item → player#queue-size
+      type: TEXT
+      context: item
+      groupName: player
+    - name: shuffleItem
+      label: Shuffle
+      description: Switch Item → player#shuffle
+      type: TEXT
+      context: item
+      groupName: player
+    - name: repeatItem
+      label: Repeat
+      description: String Item → player#repeat (OFF / PLAYLIST / TRACK)
+      type: TEXT
+      context: item
+      groupName: player
+    - name: queryItem
+      label: Suchbegriff
+      description: String Item → search#query
+      type: TEXT
+      context: item
+      groupName: search
+      required: true
+    - name: resultsItem
+      label: Suchergebnisse
+      description: String Item → search#results
+      type: TEXT
+      context: item
+      groupName: search
+      required: true
+    - name: playlistIdItem
+      label: Playlist-ID
+      description: String Item → player#playlist-id
+      type: TEXT
+      context: item
+      groupName: search
+    - name: myPlaylistsItem
+      label: Meine Playlists
+      description: String Item → search#my-playlists (erscheinen als Schnellwahl)
+      type: TEXT
+      context: item
+      groupName: search
+    - name: targetItem
+      label: Chromecast-Ziel
+      description: String Item → player#chromecast-target
+      type: TEXT
+      context: item
+      groupName: cast
+      required: true
+    - name: chromecastTag
+      label: Chromecast-Tag
+      description: Tag der Chromecast-Play-URI-Items (Standard Chromecast)
+      type: TEXT
+      default: Chromecast
+      groupName: cast
+    - name: ccControlItem
+      label: Proxy Steuerung
+      type: TEXT
+      context: item
+      default: SC_CC_Control
+      groupName: cast
+    - name: ccStopItem
+      label: Proxy Stop
+      type: TEXT
+      context: item
+      default: SC_CC_Stop
+      groupName: cast
+    - name: ccVolumeItem
+      label: Proxy Lautstärke
+      type: TEXT
+      context: item
+      default: SC_CC_Volume
+      groupName: cast
+    - name: ccMuteItem
+      label: Proxy Stumm
+      type: TEXT
+      context: item
+      default: SC_CC_Mute
+      groupName: cast
+component: f7-card
+config:
+  style:
+    position: relative
+    overflow: clip
+    border-radius: 18px
+    margin: 0
+    max-width: 960px
+    margin-left: auto
+    margin-right: auto
+    background: "#222"
+    color: white
+  stylesheet: >
+    @keyframes sc-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .sc-mq { overflow: hidden; white-space: nowrap; width: 100%; }
+    .sc-mq-run { display: inline-flex; animation-name: sc-marquee; animation-timing-function: linear; animation-iteration-count: infinite; }
+    .sc-mq-run span { padding-right: 5em; }
+    .sc-mq-static { display: block; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+    .sc-ctrl { display: flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; color: white !important; }
+    .sc-ctrl:hover { background: rgba(255,255,255,0.12); }
+    .sc-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 10px; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.25); color: white !important; font-size: 13px; }
+    .sc-chip.sc-sel { background: rgba(255,255,255,0.85); color: #222 !important; }
+    .sc-row { display: flex !important; align-items: center; gap: 12px; padding: 6px 4px; border-radius: 8px; color: white !important; text-align: left; }
+    .sc-row:hover { background: rgba(255,255,255,0.12); }
+    .sc-search input { width: 100%; color: white !important; caret-color: white; background: rgba(255,255,255,0.12) !important; border: 1px solid rgba(255,255,255,0.35) !important; border-radius: 10px; padding: 8px 12px; font-size: 15px; outline: none; }
+    .sc-search input::placeholder { color: rgba(255,255,255,0.6); }
+    .sc-seek { --f7-range-bar-height: 4px; --f7-range-knob-size: 12px; --f7-range-bar-active-bg-color: white; --f7-range-bar-bg-color: rgba(255,255,255,0.25); --f7-range-knob-color: white; }
+slots:
+  default:
+    # Hintergrund: unscharfes Cover
+    - component: div
+      config:
+        style:
+          position: absolute
+          inset: -80px
+          background-image: "=props.artworkItem && ('' + @@props.artworkItem).indexOf('http') === 0 ? 'url(' + @@props.artworkItem + ')' : 'none'"
+          background-size: cover
+          background-position: center
+          filter: blur(70px) saturate(1.5)
+          transform: scale(1.3)
+    - component: div
+      config:
+        style:
+          position: absolute
+          inset: 0
+          background: linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.30) 55%, rgba(0,0,0,0.55) 100%)
+    - component: div
+      config:
+        style:
+          position: relative
+          z-index: 1
+          display: flex
+          flex-direction: column
+          align-items: center
+          padding: 16px 24px 20px
+          gap: 10px
+          text-shadow: 0 1px 6px rgba(0,0,0,0.45)
+      slots:
+        default:
+          # Kopfzeile
+          - component: div
+            config:
+              style:
+                display: flex
+                width: 100%
+                justify-content: space-between
+                align-items: center
+            slots:
+              default:
+                - component: div
+                  config:
+                    content: "=(@@props.stateItem === 'PLAYING' ? '● spielt' : (@@props.stateItem === 'PAUSED' ? '❚❚ pausiert' : '■ gestoppt')) + (props.queueSizeItem && Number(@@props.queueSizeItem) > 1 ? '   ·   ' + Number(@@props.queueIndexItem) + ' / ' + Number(@@props.queueSizeItem) : '')"
+                    style:
+                      font-size: 13px
+                      opacity: 0.85
+                      padding: 4px 10px
+                      border-radius: 8px
+                      background: rgba(0,0,0,0.25)
+                      white-space: pre
+                - component: div
+                  config:
+                    style:
+                      display: flex
+                      gap: 4px
+                  slots:
+                    default:
+                      - component: oh-link
+                        config:
+                          class:
+                            - sc-ctrl
+                          iconF7: "=vars.showSearch ? 'xmark' : 'search'"
+                          iconSize: 22
+                          action: variable
+                          actionVariable: showSearch
+                          actionVariableValue: =!vars.showSearch
+                      - component: oh-link
+                        config:
+                          class:
+                            - sc-ctrl
+                          iconF7: stop_fill
+                          iconSize: 20
+                          action: command
+                          actionItem: =props.ccStopItem
+                          actionCommand: "ON"
+          # Suche
+          - component: div
+            config:
+              visible: =vars.showSearch === true
+              style:
+                width: 100%
+                background: rgba(0,0,0,0.35)
+                border-radius: 14px
+                padding: 10px
+                box-sizing: border-box
+            slots:
+              default:
+                - component: div
+                  config:
+                    style:
+                      display: flex
+                      align-items: center
+                      gap: 6px
+                  slots:
+                    default:
+                      - component: oh-input
+                        config:
+                          class:
+                            - sc-search
+                          variable: scQuery
+                          type: text
+                          placeholder: SoundCloud durchsuchen …
+                          style:
+                            flex: 1
+                      - component: oh-link
+                        config:
+                          class:
+                            - sc-ctrl
+                          iconF7: search
+                          iconSize: 20
+                          action: command
+                          actionItem: =props.queryItem
+                          actionCommand: "=vars.scQuery || ' '"
+                - component: div
+                  config:
+                    visible: "=('' + @@props.resultsItem) === '[]'"
+                    content: Keine Treffer
+                    style:
+                      padding: 10px 4px
+                      opacity: 0.8
+                - component: div
+                  config:
+                    style:
+                      max-height: 320px
+                      overflow-y: auto
+                      margin-top: 6px
+                  slots:
+                    default:
+                      - component: oh-repeater
+                        config:
+                          for: r
+                          sourceType: array
+                          in: "=('' + @@props.resultsItem).indexOf('[') === 0 ? JSON.parse(@@props.resultsItem) : []"
+                          fragment: true
+                        slots:
+                          default:
+                            - component: oh-link
+                              config:
+                                class:
+                                  - sc-row
+                                action: command
+                                actionItem: =props.trackIdItem
+                                actionCommand: ='' + loop.r.id
+                              slots:
+                                default:
+                                  - component: div
+                                    config:
+                                      style:
+                                        width: 44px
+                                        height: 44px
+                                        flex: none
+                                        border-radius: 6px
+                                        background-color: rgba(255,255,255,0.15)
+                                        background-image: "=loop.r.artwork ? 'url(' + loop.r.artwork + ')' : 'none'"
+                                        background-size: cover
+                                        background-position: center
+                                  - component: div
+                                    config:
+                                      style:
+                                        flex: 1
+                                        min-width: 0
+                                    slots:
+                                      default:
+                                        - component: div
+                                          config:
+                                            content: =loop.r.title
+                                            style:
+                                              font-weight: 600
+                                              white-space: nowrap
+                                              overflow: hidden
+                                              text-overflow: ellipsis
+                                        - component: div
+                                          config:
+                                            content: "=(loop.r.artist || '') + (loop.r.duration ? '  ·  ' + Math.floor(loop.r.duration / 60) + ' Min' : '')"
+                                            style:
+                                              font-size: 12px
+                                              opacity: 0.75
+                                              white-space: pre
+                                              overflow: hidden
+                                              text-overflow: ellipsis
+                                  - component: f7-icon
+                                    config:
+                                      f7: play_circle
+                                      size: 26
+          # Cover
+          - component: div
+            config:
+              style:
+                width: min(400px, 75vw)
+                aspect-ratio: 1 / 1
+                border-radius: 12px
+                box-shadow: 0 12px 40px rgba(0,0,0,0.45)
+                background-color: rgba(255,255,255,0.08)
+                background-image: "=props.artworkItem && ('' + @@props.artworkItem).indexOf('http') === 0 ? 'url(' + @@props.artworkItem + ')' : 'none'"
+                background-size: cover
+                background-position: center
+                margin: 6px 0 10px
+          # Titel (Lauftext)
+          - component: div
+            config:
+              class:
+                - sc-mq
+              style:
+                font-size: 28px
+                font-weight: 700
+            slots:
+              default:
+                - component: div
+                  config:
+                    class: "=('' + @@props.titleItem).length > 34 ? 'sc-mq-run' : 'sc-mq-static'"
+                    style:
+                      animation-duration: "=(('' + @@props.titleItem).length * 0.3) + 's'"
+                  slots:
+                    default:
+                      - component: span
+                        config:
+                          content: "=['NULL', 'UNDEF', ''].includes('' + @@props.titleItem) ? 'Nichts wird abgespielt' : @@props.titleItem"
+                      - component: span
+                        config:
+                          visible: "=('' + @@props.titleItem).length > 34"
+                          content: =@@props.titleItem
+          # Künstler
+          - component: div
+            config:
+              visible: "=props.artistItem && !['NULL', 'UNDEF', ''].includes('' + @@props.artistItem)"
+              content: =@@props.artistItem
+              style:
+                font-size: 20px
+                opacity: 0.8
+                text-align: center
+          # Fortschritt
+          - component: div
+            config:
+              visible: =!!props.durationItem
+              style:
+                width: 100%
+                margin-top: 14px
+            slots:
+              default:
+                - component: oh-slider
+                  config:
+                    visible: =!!props.seekPctItem
+                    class:
+                      - sc-seek
+                    item: =props.seekPctItem
+                    min: 0
+                    max: 100
+                    step: 1
+                    releaseOnly: true
+                    style:
+                      width: 100%
+                - component: div
+                  config:
+                    visible: =!props.seekPctItem
+                    style:
+                      height: 4px
+                      width: 100%
+                      border-radius: 2px
+                      background: rgba(255,255,255,0.25)
+                      overflow: hidden
+                  slots:
+                    default:
+                      - component: div
+                        config:
+                          style:
+                            height: 100%
+                            background: white
+                            transition: width 1s linear
+                            width: "=Math.min(100, (Number(@@props.elapsedItem) || 0) / (Number(@@props.durationItem) || 1) * 100) + '%'"
+                - component: div
+                  config:
+                    style:
+                      display: flex
+                      justify-content: space-between
+                      font-size: 12px
+                      opacity: 0.8
+                      margin-top: 6px
+                  slots:
+                    default:
+                      - component: span
+                        config:
+                          content: "=(Number(@@props.elapsedItem) >= 3600 ? Math.floor(Number(@@props.elapsedItem) / 3600) + ':' : '') + ('0' + Math.floor((Number(@@props.elapsedItem) || 0) % 3600 / 60)).slice(-2) + ':' + ('0' + Math.floor((Number(@@props.elapsedItem) || 0) % 60)).slice(-2)"
+                      - component: span
+                        config:
+                          content: "=(Number(@@props.durationItem) >= 3600 ? Math.floor(Number(@@props.durationItem) / 3600) + ':' : '') + ('0' + Math.floor((Number(@@props.durationItem) || 0) % 3600 / 60)).slice(-2) + ':' + ('0' + Math.floor((Number(@@props.durationItem) || 0) % 60)).slice(-2)"
+          # Steuerung
+          - component: div
+            config:
+              style:
+                display: flex
+                width: 100%
+                justify-content: space-around
+                align-items: center
+                margin-top: 4px
+            slots:
+              default:
+                - component: oh-link
+                  config:
+                    class:
+                      - sc-ctrl
+                    iconF7: shuffle
+                    iconSize: 22
+                    action: toggle
+                    actionItem: =props.shuffleItem
+                    actionCommand: "ON"
+                    actionCommandAlt: "OFF"
+                    style:
+                      opacity: "=props.shuffleItem && @@props.shuffleItem === 'ON' ? 1 : 0.55"
+                - component: oh-link
+                  config:
+                    class:
+                      - sc-ctrl
+                    iconF7: backward_end
+                    iconSize: 26
+                    action: command
+                    actionItem: =props.stateItem
+                    actionCommand: PREVIOUS
+                # Play / Pause: Pause und Fortsetzen über den Chromecast, sonst Track neu laden
+                - component: oh-link
+                  config:
+                    iconF7: "=@@props.stateItem === 'PLAYING' ? 'pause_fill' : 'play_fill'"
+                    iconSize: 30
+                    action: command
+                    actionItem: "=['PLAYING', 'PAUSED'].includes(@@props.stateItem) ? props.ccControlItem : props.trackIdItem"
+                    actionCommand: "=@@props.stateItem === 'PLAYING' ? 'PAUSE' : (@@props.stateItem === 'PAUSED' ? 'PLAY' : '' + @@props.trackIdItem)"
+                    style:
+                      display: flex
+                      align-items: center
+                      justify-content: center
+                      width: 60px
+                      height: 60px
+                      border-radius: 50%
+                      background: rgba(255,255,255,0.92)
+                      color: "#222"
+                      box-shadow: 0 4px 16px rgba(0,0,0,0.3)
+                - component: oh-link
+                  config:
+                    class:
+                      - sc-ctrl
+                    iconF7: forward_end
+                    iconSize: 26
+                    action: command
+                    actionItem: =props.stateItem
+                    actionCommand: NEXT
+                - component: oh-link
+                  config:
+                    class:
+                      - sc-ctrl
+                    iconF7: "=props.repeatItem && @@props.repeatItem === 'TRACK' ? 'repeat_1' : 'repeat'"
+                    iconSize: 22
+                    action: command
+                    actionItem: =props.repeatItem
+                    actionCommand: "=@@props.repeatItem === 'PLAYLIST' ? 'TRACK' : (@@props.repeatItem === 'TRACK' ? 'OFF' : 'PLAYLIST')"
+                    style:
+                      opacity: "=props.repeatItem && ['PLAYLIST', 'TRACK'].includes(@@props.repeatItem) ? 1 : 0.55"
+          # Lautstärke (Chromecast)
+          - component: div
+            config:
+              style:
+                display: flex
+                width: 100%
+                align-items: center
+                gap: 10px
+            slots:
+              default:
+                - component: oh-link
+                  config:
+                    class:
+                      - sc-ctrl
+                    iconF7: "=@@props.ccMuteItem === 'ON' ? 'speaker_slash' : 'speaker_2'"
+                    iconSize: 20
+                    action: toggle
+                    actionItem: =props.ccMuteItem
+                    actionCommand: "ON"
+                    actionCommandAlt: "OFF"
+                - component: oh-slider
+                  config:
+                    item: =props.ccVolumeItem
+                    min: 0
+                    max: 100
+                    step: 1
+                    releaseOnly: true
+                    style:
+                      flex: 1
+                      --f7-range-bar-active-bg-color: white
+                      --f7-range-bar-bg-color: rgba(255,255,255,0.3)
+                      --f7-range-knob-color: white
+                - component: span
+                  config:
+                    content: "=Number(@@props.ccVolumeItem) >= 0 ? Math.round(Number(@@props.ccVolumeItem)) : '-'"
+                    style:
+                      width: 30px
+                      text-align: right
+                      font-size: 13px
+          # Meine Playlists (Schnellwahl)
+          - component: div
+            config:
+              visible: "=props.myPlaylistsItem && props.playlistIdItem && ('' + @@props.myPlaylistsItem).indexOf('[') === 0 && ('' + @@props.myPlaylistsItem).slice(-1) === ']'"
+              style:
+                display: flex
+                flex-wrap: wrap
+                justify-content: center
+                gap: 8px
+            slots:
+              default:
+                - component: oh-repeater
+                  config:
+                    for: q
+                    sourceType: array
+                    in: "=props.myPlaylistsItem && ('' + @@props.myPlaylistsItem).indexOf('[') === 0 && ('' + @@props.myPlaylistsItem).slice(-1) === ']' ? JSON.parse(@@props.myPlaylistsItem) : []"
+                    fragment: true
+                  slots:
+                    default:
+                      - component: oh-link
+                        config:
+                          class:
+                            - sc-chip
+                          iconF7: music_note_list
+                          iconSize: 14
+                          text: =loop.q.title
+                          action: command
+                          actionItem: =props.playlistIdItem
+                          actionCommand: ='' + loop.q.id
+          # Aktueller Chromecast (Klick klappt die Auswahl auf)
+          - component: oh-repeater
+            config:
+              for: c
+              sourceType: itemsWithTags
+              itemTags: =props.chromecastTag || 'Chromecast'
+              filter: loop.c.name === @@props.targetItem
+              fragment: true
+            slots:
+              default:
+                - component: oh-link
+                  config:
+                    class:
+                      - sc-chip
+                    iconF7: "=vars.showCast ? 'chevron_down' : 'tv_music_note'"
+                    iconSize: 16
+                    text: =loop.c.label
+                    action: variable
+                    actionVariable: showCast
+                    actionVariableValue: =!vars.showCast
+          - component: oh-link
+            config:
+              visible: "=['NULL', 'UNDEF', ''].includes('' + @@props.targetItem)"
+              class:
+                - sc-chip
+              iconF7: tv_music_note
+              iconSize: 16
+              text: Chromecast wählen
+              action: variable
+              actionVariable: showCast
+              actionVariableValue: =!vars.showCast
+          - component: div
+            config:
+              visible: =vars.showCast === true
+              style:
+                display: flex
+                flex-wrap: wrap
+                justify-content: center
+                gap: 8px
+                padding-top: 6px
+            slots:
+              default:
+                - component: oh-repeater
+                  config:
+                    for: c
+                    sourceType: itemsWithTags
+                    itemTags: =props.chromecastTag || 'Chromecast'
+                    fragment: true
+                  slots:
+                    default:
+                      - component: oh-link
+                        config:
+                          class: "=loop.c.name === @@props.targetItem ? 'sc-chip sc-sel' : 'sc-chip'"
+                          text: =loop.c.label
+                          action: command
+                          actionItem: =props.targetItem
+                          actionCommand: =loop.c.name
