@@ -27,6 +27,7 @@ import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.StringType;
+import org.openhab.core.net.NetworkAddressService;
 import org.openhab.core.storage.Storage;
 import org.openhab.core.storage.StorageService;
 import org.openhab.core.thing.ChannelUID;
@@ -59,6 +60,7 @@ public class SoundCloudHandler extends BaseThingHandler {
     private final Storage<String> storage;
     private final HttpService httpService;
     private final EventPublisher eventPublisher;
+    private final NetworkAddressService networkAddressService;
     private @Nullable SoundCloudApiClient apiClient;
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
@@ -83,11 +85,12 @@ public class SoundCloudHandler extends BaseThingHandler {
     private List<Integer> shuffleOrder = new ArrayList<>();
 
     public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService,
-            EventPublisher eventPublisher) {
+            EventPublisher eventPublisher, NetworkAddressService networkAddressService) {
         super(thing);
         this.storage = storageService.getStorage(thing.getUID().toString());
         this.httpService = httpService;
         this.eventPublisher = eventPublisher;
+        this.networkAddressService = networkAddressService;
     }
 
     // -------------------------------------------------------------------------
@@ -504,9 +507,27 @@ public class SoundCloudHandler extends BaseThingHandler {
             updateQueueChannels();
             resetProgress();
             startProgressTimer();
+            sendToChromecast(streamUrl);
         } catch (Exception e) {
             logger.warn("playTrackInternal für Track {} fehlgeschlagen: {}", track.id, e.getMessage());
         }
+    }
+
+    /**
+     * Schickt eine Stream-URL an das Play-URI-Item; die Router-Regel leitet sie an den gewählten
+     * Chromecast weiter (und wiederholt sie, falls der Chromecast erst die Cast-App starten musste).
+     */
+    private void sendToChromecast(String url) {
+        String target = currentChromecastTarget;
+        if (target == null || target.isBlank()) {
+            logger.debug("Kein Chromecast-Ziel gewählt — Stream wird nicht gesendet");
+            return;
+        }
+        String playUriItem = getConfigAs(SoundCloudConfiguration.class).playUriItem;
+        if (playUriItem.isBlank()) {
+            return;
+        }
+        eventPublisher.post(ItemEventFactory.createCommandEvent(playUriItem, new StringType(url)));
     }
 
     private void handleNext() {
@@ -621,7 +642,13 @@ public class SoundCloudHandler extends BaseThingHandler {
     private void handlePlaybackCommand(String cmd) {
         switch (cmd) {
             case "PLAY":
-                if (currentTrack != null) {
+                SoundCloudTrack track = currentTrack;
+                SoundCloudApiClient client = apiClient;
+                if (track != null && "STOPPED".equals(playbackState) && client != null) {
+                    // Nach STOP läuft auf dem Chromecast nichts mehr: Track mit frischer Stream-URL neu starten
+                    int index = currentQueueIndex;
+                    scheduler.submit(() -> playTrackInternal(client, track, index));
+                } else if (track != null) {
                     playbackState = "PLAYING";
                     updateState(CHANNEL_PLAYBACK_STATE, new StringType("PLAYING"));
                     startProgressTimer();
@@ -633,13 +660,9 @@ public class SoundCloudHandler extends BaseThingHandler {
                 stopProgressTimer();
                 break;
             case "STOP":
+                // Track bleibt geladen (Titel, Cover, Warteschlange), damit PLAY ihn wieder starten kann
                 playbackState = "STOPPED";
-                currentTrack = null;
-                currentStreamUrl = null;
                 updateState(CHANNEL_PLAYBACK_STATE, new StringType("STOPPED"));
-                updateState(CHANNEL_STREAM_URL, new StringType(""));
-                updateState(CHANNEL_TITLE, new StringType(""));
-                updateState(CHANNEL_ARTIST, new StringType(""));
                 resetProgress();
                 break;
             case "NEXT":
@@ -680,22 +703,24 @@ public class SoundCloudHandler extends BaseThingHandler {
                 + "&from=" + target
                 + "&type=" + seekType;
 
-        logger.info("Seek: {}s → {}s — {}-Proxy an SC_CC_PlayURI", elapsedSeconds, target, seekType);
+        logger.info("Seek: {}s → {}s — {}-Proxy an {}", elapsedSeconds, target, seekType, config.playUriItem);
 
-        // Router-Regel leitet SC_CC_PlayURI an das aktive Chromecast-Play-URI-Item weiter
-        eventPublisher.post(ItemEventFactory.createCommandEvent("SC_CC_PlayURI", new StringType(proxyUrl)));
+        // Router-Regel leitet das Play-URI-Item an das aktive Chromecast-Play-URI-Item weiter
+        sendToChromecast(proxyUrl);
 
         elapsedSeconds = (int) target;
         updateState(CHANNEL_ELAPSED_TIME, new DecimalType(elapsedSeconds));
     }
 
-    private static String extractOrigin(String uri) {
+    private String extractOrigin(String uri) {
         try {
             URI u = URI.create(uri);
             int port = u.getPort();
             return u.getScheme() + "://" + u.getHost() + (port > 0 ? ":" + port : "");
         } catch (Exception e) {
-            return "http://192.168.1.201:7070";
+            // Redirect-URI unbrauchbar: eigene LAN-Adresse von openHAB verwenden
+            String ip = networkAddressService.getPrimaryIpv4HostAddress();
+            return "http://" + (ip != null ? ip : "localhost") + ":8080";
         }
     }
 

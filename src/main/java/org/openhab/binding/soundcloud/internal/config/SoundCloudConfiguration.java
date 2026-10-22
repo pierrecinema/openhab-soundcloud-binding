@@ -11,4 +11,6 @@ public class SoundCloudConfiguration {
     public String webClientId = "gxPRNsEq7CDD7Wvem4iymWOq3YfU7KS8";
     /** Name des Player-Items, das mit dem control-Kanal des Chromecasts verknüpft ist (für FASTFORWARD/REWIND Seek). */
     public String chromecastControlItem = "";
+    /** Item, an das Stream-URLs für den gewählten Chromecast geschickt werden (neue Tracks und Seek). */
+    public String playUriItem = "SC_CC_PlayURI";
 }

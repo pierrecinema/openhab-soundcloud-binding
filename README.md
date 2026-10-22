@@ -9,7 +9,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ---
 
-## Features (v1.5.5)
+## Features (v1.5.6)
 
 - **Search** tracks by keyword — results appear instantly in the widget list
 - **Cover art** at 500 × 500 px displayed alongside title and artist
@@ -26,6 +26,8 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 - **Repeat modes** — OFF / Repeat Track / Repeat Playlist
 - **Shuffle** — randomises playback order within the queue
 - **Track counter** — shows current position in queue (e.g. 3 / 12) in the widget
+- **Auto-play on the Chromecast** — every newly loaded track is sent to the selected Chromecast by the binding itself (no auto-play rule needed since v1.5.6)
+- **Stop keeps the track** — Play after Stop restarts the same track with a fresh stream URL
 
 ---
 
@@ -55,7 +57,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ### 1. Download the JAR
 
-Download `org.openhab.binding.soundcloud-1.5.4.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
+Download `org.openhab.binding.soundcloud-1.5.6.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
 
 openHAB detects and loads the bundle automatically — no restart needed. Check **Settings → Bindings** to confirm it appears.
 
@@ -79,7 +81,7 @@ Two widgets are available in [`openhab-conf/widgets`](openhab-conf/widgets):
 git clone https://github.com/pierrecinema/openhab-soundcloud-binding.git
 cd openhab-soundcloud-binding
 mvn clean package -DskipTests
-# copy target/org.openhab.binding.soundcloud-1.2.9.jar to your addons/ folder
+# copy target/org.openhab.binding.soundcloud-1.5.6.jar to your addons/ folder (remove older versions first)
 ```
 
 ---
@@ -103,6 +105,7 @@ Thing soundcloud:account:myaccount "SoundCloud" [
 | `clientId` | ✅ | Client ID from [soundcloud.com/you/apps](https://soundcloud.com/you/apps) |
 | `clientSecret` | ✅ | Client Secret from your registered app |
 | `redirectUri` | ✅ | Must match exactly what is registered in your SoundCloud app |
+| `playUriItem` | optional | Item that receives stream URLs for the selected Chromecast — new tracks and seek (default `SC_CC_PlayURI`, forwarded by the [routing rule](#chromecast-routing-rule)) |
 
 
 | `webClientId` | optional | Internal SoundCloud web client ID for api-v2 (default value included) |
@@ -187,7 +190,7 @@ Same items, different look: the blurred cover fills the background, long titles 
 | `chromecastTag` | | Tag on your Chromecast `playuri` items (default `Chromecast`) |
 | `ccControlItem`, `ccStopItem`, `ccVolumeItem`, `ccMuteItem`, `ccPlayUriItem` | | Proxy items (defaults `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`, `SC_CC_PlayURI`) |
 
-Play/Pause: while playing, Play pauses the Chromecast; while paused it resumes (no restart); when stopped it sends the stream URL to the selected Chromecast again (via `SC_CC_PlayURI` and the router). New tracks start automatically through the [auto-play rule](#auto-play-rule).
+Play/Pause: while playing, Play pauses the Chromecast; while paused it resumes (no restart); when stopped it sends PLAY to the binding, which restarts the track with a fresh stream URL (v1.5.6+). New tracks start automatically — sent by the binding itself since v1.5.6 (older versions need the [auto-play rule](#auto-play-rule)).
 
 ---
 
@@ -265,7 +268,9 @@ The rule looks up the Chromecast thing behind the selected `playuri` item and fo
 1. Link the device's `playuri`, `control`, `stop`, `volume` and `mute` channels to items
 2. Tag the `playuri` item with `Chromecast` — it appears automatically as a chip in the widget and the router finds the other items by itself
 
-### Auto-play rule
+### Auto-play rule (only for v1.5.5 and older)
+
+> **Since v1.5.6 the binding sends every new track to `playUriItem` itself — do not use this rule with v1.5.6 or newer**, otherwise each track is sent twice. The router's retry still applies.
 
 Starts every newly loaded track on the selected Chromecast (search result, next / previous, playlist, repeat). Create a rule with an **Item State Change** trigger on `SC_StreamURL` (the item linked to `player#stream-url`) and paste [`openhab-conf/rules/soundcloud_autoplay.js`](openhab-conf/rules/soundcloud_autoplay.js). The rule sends the URL through `SC_CC_PlayURI`, so the router forwards it to the selected device and **resends it once after 5 s** if the Chromecast is not playing yet. This happens when no cast app was running: the first command only launches the receiver app.
 
@@ -286,6 +291,8 @@ Starts every newly loaded track on the selected Chromecast (search result, next 
 | v1.5.0  | ✅ done | Playlist queue: next / previous, auto-advance, repeat (OFF/TRACK/PLAYLIST), shuffle |
 | v1.5.4  | ✅ done | Stability: removed experimental playlist-browse feature |
 | v1.5.5  | ✅ done | Widget redesign: Spotify-like layout — cover + meta left, search right, full-width player bar; responsive mobile support |
+| v1.5.6  | ✅ done | Binding sends new tracks to the Chromecast itself (auto-play rule obsolete); configurable `playUriItem`; Stop keeps the track; no hard-coded IP fallback; new `soundcloud_nowplaying` widget; automatic router rule |
+| v1.6.0  | planned | Router inside the binding: volume / mute / pause via binding channels, no proxy items or rules |
 | v1.6.x  | planned | Likes / stream feed — browse your own liked tracks |
 | v2.0.0  | planned | Submit to openHAB add-ons repository |
 

@@ -35,6 +35,11 @@
                 <description>SoundCloud internal web client_id used for search (api-v2). Default works until SoundCloud rotates it.</description>
                 <default>gxPRNsEq7CDD7Wvem4iymWOq3YfU7KS8</default>
             </parameter>
+            <parameter name="playUriItem" type="text" required="false">
+                <label>Chromecast Play-URI Item</label>
+                <description>Item that receives stream URLs for the selected Chromecast (new tracks and seek). The router rule forwards it to the active device.</description>
+                <default>SC_CC_PlayURI</default>
+            </parameter>
             <parameter name="chromecastControlItem" type="text" required="false">
                 <label>Chromecast Control Item</label>
                 <description>Name des Player-Items, das mit dem control-Kanal des Chromecasts verknüpft ist (z.B. BuroCast_Media_Control). Wird für FASTFORWARD/REWIND Seek verwendet.</description>
