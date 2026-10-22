@@ -66,6 +66,13 @@ openHAB detects and loads the bundle automatically — no restart needed. Check 
 3. Paste the content of `soundcloud_search.yaml` (also in the release assets)
 4. Save
 
+Two widgets are available in [`openhab-conf/widgets`](openhab-conf/widgets):
+
+| Widget | Layout |
+|---|---|
+| `soundcloud_search.yaml` | Spotify-like: cover and search side by side, player bar at the bottom |
+| `soundcloud_nowplaying.yaml` | Now-playing card: background follows the cover colours, scrolling title, search panel, seekable progress bar, Chromecast chips (see [Now-playing widget](#now-playing-widget-soundcloud_nowplaying)) |
+
 ### 3. Build from source (optional)
 
 ```bash
@@ -160,6 +167,28 @@ Add the `soundcloud_search` widget to a page and configure the following propert
 
 > **Note:** Pause, Stop, Volume and Mute are routed via four fixed proxy items (`SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`) and a routing rule — see [Chromecast routing rule](#chromecast-routing-rule) below. No per-device configuration is needed in the widget.
 
+### Now-playing widget (`soundcloud_nowplaying`)
+
+Same items, different look: the blurred cover fills the background, long titles scroll, the search opens from the magnifier icon (Enter or ✓ searches, tapping a result loads and plays it), the progress bar is seekable and the selected Chromecast is shown as a chip — tap it to pick another device.
+
+| Property | Required | Description |
+|----------|----------|-------------|
+| `titleItem` | ✅ | → `player#title` |
+| `stateItem` | ✅ | → `player#playback-state` |
+| `trackIdItem` | ✅ | → `player#track-id` |
+| `queryItem` | ✅ | → `search#query` |
+| `resultsItem` | ✅ | → `search#results` |
+| `targetItem` | ✅ | → `player#chromecast-target` (e.g. `SC_CCTarget`) |
+| `artistItem`, `artworkItem`, `streamUrlItem` | | → `player#artist`, `player#artwork-url`, `player#stream-url` |
+| `elapsedItem`, `durationItem` | | → `player#elapsed-time`, `player#duration` (progress bar) |
+| `seekPctItem` | | Number item 0–100 for seeking via the progress bar (needs a small rule that converts % to seconds and sends it to `elapsedItem`) |
+| `queueIndexItem`, `queueSizeItem` | | → `player#queue-index`, `player#queue-size` (shows "3 / 12") |
+| `shuffleItem`, `repeatItem` | | → `player#shuffle`, `player#repeat` |
+| `chromecastTag` | | Tag on your Chromecast `playuri` items (default `Chromecast`) |
+| `ccControlItem`, `ccStopItem`, `ccVolumeItem`, `ccMuteItem` | | Proxy items (defaults `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`) |
+
+Play/Pause: while playing, Play pauses the Chromecast; while paused it resumes (no restart); when stopped it sends the stream URL to the selected Chromecast again. New tracks start automatically through the [auto-play rule](#auto-play-rule).
+
 ---
 
 ## Channel reference
@@ -206,13 +235,14 @@ Widget expressions can only use fixed item names. They cannot dynamically look u
 
 ### Setup
 
-**Step 1 — Create the four proxy items** (once, in Settings → Items or via `.items` file):
+**Step 1 — Create the proxy items** (once, in Settings → Items or via `.items` file):
 
 ```
 Player SC_CC_Control "SoundCloud CC Control"
 Switch SC_CC_Stop    "SoundCloud CC Stop"
 Dimmer SC_CC_Volume  "SoundCloud CC Volume"
 Switch SC_CC_Mute    "SoundCloud CC Mute"
+String SC_CC_PlayURI "SoundCloud CC Play URI"   // used by the binding for seeking
 ```
 
 Also create the target item and link it to the binding channel:
@@ -221,60 +251,25 @@ Also create the target item and link it to the binding channel:
 String SC_CCTarget "SoundCloud CC Target" { channel="soundcloud:account:myaccount:player#chromecast-target" }
 ```
 
-**Step 2 — Create the routing rule** in Settings → Rules → + (ECMAScript 2021, triggered by command on each of the four proxy items):
+**Step 2 — Create the routing rule** in Settings → Rules → + (ECMAScript 2021+), with **Item Command** triggers on `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute` and `SC_CC_PlayURI`. Paste the script from [`openhab-conf/rules/soundcloud_chromecast_router.js`](openhab-conf/rules/soundcloud_chromecast_router.js).
 
-```javascript
-var triggerItem = event.itemName;
-var cmd         = event.receivedCommand.toString();
-var targetName  = items.getItem('SC_CCTarget').state;
-
-if (!targetName || targetName === 'NULL') return;
-
-// Map each Chromecast playuri item to its control items.
-// Add a new entry here whenever you add a Chromecast device.
-var MAPPING = {
-  'BuroCast_Play_URI': {
-    control : 'BuroCast_Media_Control',
-    stop    : 'BuroCast_Stop',
-    volume  : 'BuroCast_Volume',
-    mute    : 'BuroCast_Mute'
-  },
-  'Hifigruppe_Play_URI': {
-    control : 'Hifigruppe_Media_Control',
-    stop    : 'Hifigruppe_Stop',
-    volume  : 'Hifigruppe_Volume',
-    mute    : 'Hifigruppe_Mute'
-  }
-  // Add more devices here:
-  // 'YourDevice_Play_URI': { control: '...', stop: '...', volume: '...', mute: '...' }
-};
-
-var map = MAPPING[targetName];
-if (!map) { logger.warn('SC Router: no mapping for ' + targetName); return; }
-
-var destName = null;
-if      (triggerItem === 'SC_CC_Control') destName = map.control;
-else if (triggerItem === 'SC_CC_Stop')    destName = map.stop;
-else if (triggerItem === 'SC_CC_Volume')  destName = map.volume;
-else if (triggerItem === 'SC_CC_Mute')    destName = map.mute;
-
-if (destName) {
-  items.getItem(destName).sendCommand(cmd);
-  logger.info('SC Router: ' + triggerItem + ' → ' + destName + ' (' + cmd + ')');
-}
-```
-
-Configure the rule triggers as **Item Command** on: `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`.
+The rule looks up the Chromecast thing behind the selected `playuri` item and forwards each command to the item linked to the matching channel (`control`, `stop`, `volume`, `mute`, `playuri`). There is **no per-device mapping** to maintain. Adjust `STATE_ITEM` at the top if your playback-state item is not called `SC_State`.
 
 **Step 3 — Configure the widget:**
 
-- `chromecastTargetItem` = `SC_CCTarget`
+- `chromecastTargetItem` (or `targetItem` in `soundcloud_nowplaying`) = `SC_CCTarget`
 - All other Chromecast props: leave empty
 
 ### Adding a new Chromecast
 
-1. Tag the device's `playuri` item with `Chromecast` — it appears automatically as a chip in the widget
-2. Add one entry to the `MAPPING` object in the routing rule with the item names for `control`, `stop`, `volume` and `mute`
+1. Link the device's `playuri`, `control`, `stop`, `volume` and `mute` channels to items
+2. Tag the `playuri` item with `Chromecast` — it appears automatically as a chip in the widget and the router finds the other items by itself
+
+### Auto-play rule
+
+Starts every newly loaded track on the selected Chromecast (search result, next / previous, playlist, repeat). Create a rule with an **Item State Change** trigger on `SC_StreamURL` (the item linked to `player#stream-url`) and paste [`openhab-conf/rules/soundcloud_autoplay.js`](openhab-conf/rules/soundcloud_autoplay.js).
+
+> Trigger on the **stream URL**, not on the playback state: loading a new track while already playing does not change the state, and resuming after a pause would restart the track.
 
 ---
 

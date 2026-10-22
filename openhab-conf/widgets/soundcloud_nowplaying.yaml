@@ -282,20 +282,13 @@ slots:
                         config:
                           class:
                             - sc-search
-                          variable: scQuery
+                          item: =props.queryItem
                           type: text
                           placeholder: SoundCloud durchsuchen …
+                          sendButton: true
+                          clearButton: true
                           style:
                             flex: 1
-                      - component: oh-link
-                        config:
-                          class:
-                            - sc-ctrl
-                          iconF7: search
-                          iconSize: 20
-                          action: command
-                          actionItem: =props.queryItem
-                          actionCommand: "=vars.scQuery || ' '"
                 - component: div
                   config:
                     visible: "=('' + @@props.resultsItem) === '[]'"
@@ -506,8 +499,8 @@ slots:
                     iconF7: "=@@props.stateItem === 'PLAYING' ? 'pause_fill' : 'play_fill'"
                     iconSize: 30
                     action: command
-                    actionItem: "=['PLAYING', 'PAUSED'].includes(@@props.stateItem) ? props.ccControlItem : props.trackIdItem"
-                    actionCommand: "=@@props.stateItem === 'PLAYING' ? 'PAUSE' : (@@props.stateItem === 'PAUSED' ? 'PLAY' : '' + @@props.trackIdItem)"
+                    actionItem: "=['PLAYING', 'PAUSED'].includes(@@props.stateItem) ? props.ccControlItem : (('' + @@props.streamUrlItem).indexOf('http') === 0 && ('' + @@props.targetItem).length > 4 ? @@props.targetItem : props.trackIdItem)"
+                    actionCommand: "=@@props.stateItem === 'PLAYING' ? 'PAUSE' : (@@props.stateItem === 'PAUSED' ? 'PLAY' : (('' + @@props.streamUrlItem).indexOf('http') === 0 && ('' + @@props.targetItem).length > 4 ? @@props.streamUrlItem : '' + @@props.trackIdItem))"
                     style:
                       display: flex
                       align-items: center
