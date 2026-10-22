@@ -6,139 +6,127 @@ props:
     - name: player
       label: Player
     - name: search
-      label: Suche & Playlists
+      label: Search
     - name: cast
       label: Chromecast
   parameters:
     - name: titleItem
-      label: Titel
-      description: String Item → player#title
+      label: Title
+      description: String item → player#title
       type: TEXT
       context: item
       groupName: player
       required: true
     - name: artistItem
-      label: Künstler
-      description: String Item → player#artist
+      label: Artist
+      description: String item → player#artist
       type: TEXT
       context: item
       groupName: player
     - name: artworkItem
-      label: Cover-URL
-      description: String Item → player#artwork-url
+      label: Cover URL
+      description: String item → player#artwork-url
       type: TEXT
       context: item
       groupName: player
     - name: stateItem
-      label: Wiedergabestatus
-      description: String Item → player#playback-state (PLAYING / PAUSED / STOPPED, auch NEXT / PREVIOUS)
+      label: Playback state
+      description: String item → player#playback-state
       type: TEXT
       context: item
       groupName: player
       required: true
     - name: trackIdItem
-      label: Track-ID
-      description: String Item → player#track-id
+      label: Track ID
+      description: String item → player#track-id
       type: TEXT
       context: item
       groupName: player
       required: true
     - name: streamUrlItem
-      label: Stream-URL
-      description: String Item → player#stream-url
+      label: Stream URL
+      description: String item → player#stream-url
       type: TEXT
       context: item
       groupName: player
     - name: elapsedItem
-      label: Position
-      description: Number Item → player#elapsed-time
+      label: Elapsed time
+      description: Number item → player#elapsed-time
       type: TEXT
       context: item
       groupName: player
     - name: durationItem
-      label: Dauer
-      description: Number Item → player#duration
+      label: Duration
+      description: Number item → player#duration
       type: TEXT
       context: item
       groupName: player
     - name: seekPctItem
-      label: Springen (%)
-      description: "Optional: Number Item 0–100 für den Fortschrittsbalken zum Springen (Regel soundcloud_seek_sync)"
+      label: Seek (%)
+      description: "Optional: Number item 0–100 to seek with the progress bar (needs the seek rule from the binding repo)"
       type: TEXT
       context: item
       groupName: player
     - name: queueIndexItem
-      label: Warteschlangen-Position
-      description: Number Item → player#queue-index
+      label: Queue position
+      description: Number item → player#queue-index
       type: TEXT
       context: item
       groupName: player
     - name: queueSizeItem
-      label: Warteschlangen-Größe
-      description: Number Item → player#queue-size
+      label: Queue size
+      description: Number item → player#queue-size
       type: TEXT
       context: item
       groupName: player
     - name: shuffleItem
       label: Shuffle
-      description: Switch Item → player#shuffle
+      description: Switch item → player#shuffle
       type: TEXT
       context: item
       groupName: player
     - name: repeatItem
       label: Repeat
-      description: String Item → player#repeat (OFF / PLAYLIST / TRACK)
+      description: String item → player#repeat (OFF / PLAYLIST / TRACK)
       type: TEXT
       context: item
       groupName: player
     - name: queryItem
-      label: Suchbegriff
-      description: String Item → search#query
+      label: Search query
+      description: String item → search#query
       type: TEXT
       context: item
       groupName: search
       required: true
     - name: resultsItem
-      label: Suchergebnisse
-      description: String Item → search#results
+      label: Search results
+      description: String item → search#results
       type: TEXT
       context: item
       groupName: search
       required: true
-    - name: playlistIdItem
-      label: Playlist-ID
-      description: String Item → player#playlist-id
-      type: TEXT
-      context: item
-      groupName: search
-    - name: myPlaylistsItem
-      label: Meine Playlists
-      description: String Item → search#my-playlists (erscheinen als Schnellwahl)
-      type: TEXT
-      context: item
-      groupName: search
     - name: targetItem
-      label: Chromecast-Ziel
-      description: String Item → player#chromecast-target
+      label: Chromecast target
+      description: String item → player#chromecast-target
       type: TEXT
       context: item
       groupName: cast
       required: true
     - name: chromecastTag
-      label: Chromecast-Tag
-      description: Tag der Chromecast-Play-URI-Items (Standard Chromecast)
+      label: Chromecast tag
+      description: Tag of your Chromecast playuri items (default Chromecast)
       type: TEXT
       default: Chromecast
       groupName: cast
     - name: volumeItem
-      label: Lautstärke
-      description: Dimmer Item → player#volume (Lautstärke des gewählten Chromecasts)
+      label: Volume
+      description: Dimmer item → player#volume
       type: TEXT
       context: item
       groupName: cast
     - name: muteItem
-      label: Stumm
-      description: Switch Item → player#mute
+      label: Mute
+      description: Switch item → player#mute
       type: TEXT
       context: item
       groupName: cast
@@ -171,7 +159,7 @@ config:
     .sc-seek { --f7-range-bar-height: 4px; --f7-range-knob-size: 12px; --f7-range-bar-active-bg-color: white; --f7-range-bar-bg-color: rgba(255,255,255,0.25); --f7-range-knob-color: white; }
 slots:
   default:
-    # Hintergrund: unscharfes Cover
+    # Background: blurred cover
     - component: div
       config:
         style:
@@ -201,7 +189,7 @@ slots:
           text-shadow: 0 1px 6px rgba(0,0,0,0.45)
       slots:
         default:
-          # Kopfzeile
+          # Header
           - component: div
             config:
               style:
@@ -213,7 +201,7 @@ slots:
               default:
                 - component: div
                   config:
-                    content: "=(@@props.stateItem === 'PLAYING' ? '● spielt' : (@@props.stateItem === 'PAUSED' ? '❚❚ pausiert' : '■ gestoppt')) + (props.queueSizeItem && Number(@@props.queueSizeItem) > 1 ? '   ·   ' + Number(@@props.queueIndexItem) + ' / ' + Number(@@props.queueSizeItem) : '')"
+                    content: "=(@@props.stateItem === 'PLAYING' ? (dayjs.locale().indexOf('de') === 0 ? '● spielt' : '● playing') : (@@props.stateItem === 'PAUSED' ? (dayjs.locale().indexOf('de') === 0 ? '❚❚ pausiert' : '❚❚ paused') : (dayjs.locale().indexOf('de') === 0 ? '■ gestoppt' : '■ stopped'))) + (props.queueSizeItem && Number(@@props.queueSizeItem) > 1 ? '   ·   ' + Number(@@props.queueIndexItem) + ' / ' + Number(@@props.queueSizeItem) : '')"
                     style:
                       font-size: 13px
                       opacity: 0.85
@@ -246,7 +234,7 @@ slots:
                           action: command
                           actionItem: =props.stateItem
                           actionCommand: STOP
-          # Suche
+          # Search
           - component: div
             config:
               visible: =vars.showSearch === true
@@ -272,7 +260,7 @@ slots:
                             - sc-search
                           item: =props.queryItem
                           type: text
-                          placeholder: SoundCloud durchsuchen …
+                          placeholder: "=dayjs.locale().indexOf('de') === 0 ? 'SoundCloud durchsuchen …' : 'Search SoundCloud …'"
                           sendButton: true
                           clearButton: true
                           style:
@@ -280,7 +268,7 @@ slots:
                 - component: div
                   config:
                     visible: "=('' + @@props.resultsItem) === '[]'"
-                    content: Keine Treffer
+                    content: "=dayjs.locale().indexOf('de') === 0 ? 'Keine Treffer' : 'No results'"
                     style:
                       padding: 10px 4px
                       opacity: 0.8
@@ -361,7 +349,7 @@ slots:
                 background-size: cover
                 background-position: center
                 margin: 6px 0 10px
-          # Titel (Lauftext)
+          # Title (scrolls when long)
           - component: div
             config:
               class:
@@ -380,12 +368,12 @@ slots:
                     default:
                       - component: span
                         config:
-                          content: "=['NULL', 'UNDEF', ''].includes('' + @@props.titleItem) ? 'Nichts wird abgespielt' : @@props.titleItem"
+                          content: "=['NULL', 'UNDEF', ''].includes('' + @@props.titleItem) ? (dayjs.locale().indexOf('de') === 0 ? 'Nichts wird abgespielt' : 'Nothing playing') : @@props.titleItem"
                       - component: span
                         config:
                           visible: "=('' + @@props.titleItem).length > 34"
                           content: =@@props.titleItem
-          # Künstler
+          # Artist
           - component: div
             config:
               visible: "=props.artistItem && !['NULL', 'UNDEF', ''].includes('' + @@props.artistItem)"
@@ -394,7 +382,7 @@ slots:
                 font-size: 20px
                 opacity: 0.8
                 text-align: center
-          # Fortschritt
+          # Progress
           - component: div
             config:
               visible: =!!props.durationItem
@@ -449,7 +437,7 @@ slots:
                       - component: span
                         config:
                           content: "=(Number(@@props.durationItem) >= 3600 ? Math.floor(Number(@@props.durationItem) / 3600) + ':' : '') + ('0' + Math.floor((Number(@@props.durationItem) || 0) % 3600 / 60)).slice(-2) + ':' + ('0' + Math.floor((Number(@@props.durationItem) || 0) % 60)).slice(-2)"
-          # Steuerung
+          # Controls
           - component: div
             config:
               style:
@@ -481,7 +469,7 @@ slots:
                     action: command
                     actionItem: =props.stateItem
                     actionCommand: PREVIOUS
-                # Play / Pause: Pause und Fortsetzen über den Chromecast; gestoppt -> PLAY ans Binding (startet den Track neu, ab v1.5.6)
+                # Play / Pause (the binding controls the Chromecast)
                 - component: oh-link
                   config:
                     iconF7: "=@@props.stateItem === 'PLAYING' ? 'pause_fill' : 'play_fill'"
@@ -519,7 +507,7 @@ slots:
                     actionCommand: "=@@props.repeatItem === 'PLAYLIST' ? 'TRACK' : (@@props.repeatItem === 'TRACK' ? 'OFF' : 'PLAYLIST')"
                     style:
                       opacity: "=props.repeatItem && ['PLAYLIST', 'TRACK'].includes(@@props.repeatItem) ? 1 : 0.55"
-          # Lautstärke (Chromecast, über player#volume / player#mute)
+          # Volume (selected Chromecast via player#volume / player#mute)
           - component: div
             config:
               style:
@@ -558,36 +546,7 @@ slots:
                       width: 30px
                       text-align: right
                       font-size: 13px
-          # Meine Playlists (Schnellwahl)
-          - component: div
-            config:
-              visible: "=props.myPlaylistsItem && props.playlistIdItem && ('' + @@props.myPlaylistsItem).indexOf('[') === 0 && ('' + @@props.myPlaylistsItem).slice(-1) === ']'"
-              style:
-                display: flex
-                flex-wrap: wrap
-                justify-content: center
-                gap: 8px
-            slots:
-              default:
-                - component: oh-repeater
-                  config:
-                    for: q
-                    sourceType: array
-                    in: "=props.myPlaylistsItem && ('' + @@props.myPlaylistsItem).indexOf('[') === 0 && ('' + @@props.myPlaylistsItem).slice(-1) === ']' ? JSON.parse(@@props.myPlaylistsItem) : []"
-                    fragment: true
-                  slots:
-                    default:
-                      - component: oh-link
-                        config:
-                          class:
-                            - sc-chip
-                          iconF7: music_note_list
-                          iconSize: 14
-                          text: =loop.q.title
-                          action: command
-                          actionItem: =props.playlistIdItem
-                          actionCommand: ='' + loop.q.id
-          # Aktueller Chromecast (Klick klappt die Auswahl auf)
+          # Selected Chromecast (tap to open the device list)
           - component: oh-repeater
             config:
               for: c
@@ -614,7 +573,7 @@ slots:
                 - sc-chip
               iconF7: tv_music_note
               iconSize: 16
-              text: Chromecast wählen
+              text: "=dayjs.locale().indexOf('de') === 0 ? 'Chromecast wählen' : 'Select Chromecast'"
               action: variable
               actionVariable: showCast
               actionVariableValue: =!vars.showCast

@@ -59,7 +59,7 @@ openHAB detects and loads the bundle automatically — no restart needed. Check 
 2. Click **+** and paste the content of [`soundcloud_nowplaying.yaml`](openhab-conf/widgets/soundcloud_nowplaying.yaml) (also in the release assets)
 3. Save
 
-The now-playing card: background follows the cover colours, scrolling title, search panel, seekable progress bar, Chromecast chips.
+The now-playing card: background follows the cover colours, scrolling title, search panel, seekable progress bar, Chromecast chips. Its texts follow the openHAB language (German or English — Settings → Regional Settings → Language).
 
 ### 3. Build from source (optional)
 
