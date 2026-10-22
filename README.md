@@ -22,7 +22,7 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 - **Playlist queue** with Next / Previous, auto-advance, repeat (OFF / TRACK / PLAYLIST) and shuffle
 - **Progress bar** and **track counter** (e.g. 3 / 12)
 - **OAuth 2.0** — authorise once in the browser, tokens are stored and refreshed automatically
-- **Two MainUI widgets** — a now-playing card and a Spotify-like layout
+- **MainUI widget** — now-playing card with search, progress bar and Chromecast selection
 
 ---
 
@@ -53,16 +53,13 @@ openHAB detects and loads the bundle automatically — no restart needed. Check 
 
 > After swapping the JAR a thing may stay `UNINITIALIZED`. Disable and re-enable it once (Settings → Things → the thing → ⋮).
 
-### 2. Install a widget
+### 2. Install the widget
 
 1. In the openHAB MainUI open **Developer Tools → Widgets**
-2. Click **+** and paste the content of one of the widget files (also in the release assets)
+2. Click **+** and paste the content of [`soundcloud_nowplaying.yaml`](openhab-conf/widgets/soundcloud_nowplaying.yaml) (also in the release assets)
 3. Save
 
-| Widget | Layout |
-|---|---|
-| [`soundcloud_nowplaying.yaml`](openhab-conf/widgets/soundcloud_nowplaying.yaml) | Now-playing card: background follows the cover colours, scrolling title, search panel, seekable progress bar, Chromecast chips |
-| [`soundcloud_search.yaml`](openhab-conf/widgets/soundcloud_search.yaml) | Spotify-like: cover and search side by side, player bar at the bottom; follows the light / dark theme |
+The now-playing card: background follows the cover colours, scrolling title, search panel, seekable progress bar, Chromecast chips.
 
 ### 3. Build from source (optional)
 
@@ -156,7 +153,7 @@ Selecting a chip writes the name of the `playuri` item to `player#chromecast-tar
 
 ## Widget setup
 
-### Now-playing widget (`soundcloud_nowplaying`)
+### Widget properties (`soundcloud_nowplaying`)
 
 The blurred cover fills the background, long titles scroll, the search opens from the magnifier icon (Enter or ✓ searches, tapping a result loads and plays it), the progress bar is seekable and the selected Chromecast is shown as a chip — tap it to pick another device.
 
@@ -174,22 +171,6 @@ The blurred cover fills the background, long titles scroll, the search opens fro
 | `seekPctItem` | | Number item 0–100 for seeking with the progress bar — needs the [seek rule](#seek-rule-optional) |
 | `queueIndexItem`, `queueSizeItem` | | `player#queue-index`, `player#queue-size` (shows "3 / 12") |
 | `shuffleItem`, `repeatItem` | | `player#shuffle`, `player#repeat` |
-| `chromecastTag` | | Tag on your Chromecast `playuri` items (default `Chromecast`) |
-
-### Spotify-like widget (`soundcloud_search`)
-
-| Property | Required | Item |
-|----------|----------|------|
-| `queryItem` | ✅ | `search#query` |
-| `resultsItem` | ✅ | `search#results` |
-| `trackIdItem` | ✅ | `player#track-id` |
-| `stateItem` | ✅ | `player#playback-state` |
-| `chromecastTargetItem` | ✅ | `player#chromecast-target` |
-| `volumeItem`, `muteItem` | | `player#volume`, `player#mute` |
-| `titleItem`, `artistItem`, `artworkItem`, `streamUrlItem` | | `player#title`, `player#artist`, `player#artwork-url`, `player#stream-url` |
-| `elapsedItem`, `durationItem` | | `player#elapsed-time`, `player#duration` (progress bar, 30-second skip) |
-| `queueIndexItem`, `queueSizeItem` | | `player#queue-index`, `player#queue-size` |
-| `repeatItem`, `shuffleItem` | | `player#repeat`, `player#shuffle` |
 | `chromecastTag` | | Tag on your Chromecast `playuri` items (default `Chromecast`) |
 
 ### Seek rule (optional)
