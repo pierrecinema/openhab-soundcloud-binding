@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.jdt.annotation.Nullable;
+import org.openhab.binding.soundcloud.internal.ChromecastRouter;
 import org.openhab.binding.soundcloud.internal.SoundCloudCallbackServlet;
 import org.openhab.binding.soundcloud.internal.SoundCloudSeekServlet;
 import org.openhab.binding.soundcloud.internal.api.SoundCloudApiClient;
@@ -26,6 +27,8 @@ import org.openhab.core.events.EventPublisher;
 import org.openhab.core.items.events.ItemEventFactory;
 import org.openhab.core.library.types.DecimalType;
 import org.openhab.core.library.types.OnOffType;
+import org.openhab.core.library.types.PercentType;
+import org.openhab.core.library.types.PlayPauseType;
 import org.openhab.core.library.types.StringType;
 import org.openhab.core.net.NetworkAddressService;
 import org.openhab.core.storage.Storage;
@@ -37,6 +40,7 @@ import org.openhab.core.thing.ThingStatusDetail;
 import org.openhab.core.thing.binding.BaseThingHandler;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.RefreshType;
+import org.openhab.core.types.State;
 import org.osgi.service.http.HttpService;
 import org.osgi.service.http.NamespaceException;
 import org.slf4j.Logger;
@@ -61,6 +65,11 @@ public class SoundCloudHandler extends BaseThingHandler {
     private final HttpService httpService;
     private final EventPublisher eventPublisher;
     private final NetworkAddressService networkAddressService;
+    private final ChromecastRouter router;
+    private @Nullable ScheduledFuture<?> castRetryJob;
+    private @Nullable ScheduledFuture<?> castSyncJob;
+    private @Nullable State lastCastVolume;
+    private @Nullable State lastCastMute;
     private @Nullable SoundCloudApiClient apiClient;
     private @Nullable SoundCloudTrack currentTrack;
     private @Nullable String currentStreamUrl;
@@ -85,12 +94,13 @@ public class SoundCloudHandler extends BaseThingHandler {
     private List<Integer> shuffleOrder = new ArrayList<>();
 
     public SoundCloudHandler(Thing thing, StorageService storageService, HttpService httpService,
-            EventPublisher eventPublisher, NetworkAddressService networkAddressService) {
+            EventPublisher eventPublisher, NetworkAddressService networkAddressService, ChromecastRouter router) {
         super(thing);
         this.storage = storageService.getStorage(thing.getUID().toString());
         this.httpService = httpService;
         this.eventPublisher = eventPublisher;
         this.networkAddressService = networkAddressService;
+        this.router = router;
     }
 
     // -------------------------------------------------------------------------
@@ -112,6 +122,7 @@ public class SoundCloudHandler extends BaseThingHandler {
             currentChromecastTarget = storedTarget;
         }
         registerSeekServlet();
+        castSyncJob = scheduler.scheduleWithFixedDelay(this::syncFromChromecast, 2, 2, TimeUnit.SECONDS);
         updateStatus(ThingStatus.UNKNOWN);
         scheduler.execute(() -> initOAuth(config));
     }
@@ -318,6 +329,16 @@ public class SoundCloudHandler extends BaseThingHandler {
             tokenRefreshJob = null;
         }
         stopProgressTimer();
+        ScheduledFuture<?> sync = castSyncJob;
+        if (sync != null) {
+            sync.cancel(true);
+            castSyncJob = null;
+        }
+        ScheduledFuture<?> retry = castRetryJob;
+        if (retry != null) {
+            retry.cancel(true);
+            castRetryJob = null;
+        }
         apiClient = null;
     }
 
@@ -374,6 +395,25 @@ public class SoundCloudHandler extends BaseThingHandler {
                 currentChromecastTarget = command.toString();
                 storage.put(STORAGE_CC_TARGET, currentChromecastTarget);
                 updateState(CHANNEL_CHROMECAST_TARGET, new StringType(command.toString()));
+                lastCastVolume = null;
+                lastCastMute = null;
+                syncFromChromecast();
+                break;
+            case CHANNEL_VOLUME:
+                if (command instanceof PercentType) {
+                    router.send(currentChromecastTarget, ChromecastRouter.CC_VOLUME, command);
+                    updateState(CHANNEL_VOLUME, (PercentType) command);
+                } else if (command instanceof DecimalType) {
+                    PercentType pct = new PercentType(((DecimalType) command).toBigDecimal());
+                    router.send(currentChromecastTarget, ChromecastRouter.CC_VOLUME, pct);
+                    updateState(CHANNEL_VOLUME, pct);
+                }
+                break;
+            case CHANNEL_MUTE:
+                if (command instanceof OnOffType) {
+                    router.send(currentChromecastTarget, ChromecastRouter.CC_MUTE, command);
+                    updateState(CHANNEL_MUTE, (OnOffType) command);
+                }
                 break;
             case CHANNEL_ELAPSED_TIME:
                 handleSeek(command.toString());
@@ -514,8 +554,9 @@ public class SoundCloudHandler extends BaseThingHandler {
     }
 
     /**
-     * Schickt eine Stream-URL an das Play-URI-Item; die Router-Regel leitet sie an den gewählten
-     * Chromecast weiter (und wiederholt sie, falls der Chromecast erst die Cast-App starten musste).
+     * Schickt eine Stream-URL an den gewählten Chromecast. Läuft dort noch keine Cast-App, startet der
+     * erste Befehl nur die App und die URL geht verloren — daher nach 5 s prüfen und einmal wiederholen.
+     * Ist {@code playUriItem} gesetzt, geht die URL stattdessen an dieses Item (Legacy-Router-Regel).
      */
     private void sendToChromecast(String url) {
         String target = currentChromecastTarget;
@@ -524,10 +565,40 @@ public class SoundCloudHandler extends BaseThingHandler {
             return;
         }
         String playUriItem = getConfigAs(SoundCloudConfiguration.class).playUriItem;
-        if (playUriItem.isBlank()) {
+        if (!playUriItem.isBlank()) {
+            eventPublisher.post(ItemEventFactory.createCommandEvent(playUriItem, new StringType(url)));
             return;
         }
-        eventPublisher.post(ItemEventFactory.createCommandEvent(playUriItem, new StringType(url)));
+        if (!router.send(target, ChromecastRouter.CC_PLAYURI, new StringType(url))) {
+            logger.warn("Chromecast-Ziel '{}' ist kein verlinktes Play-URI-Item", target);
+            return;
+        }
+        ScheduledFuture<?> previous = castRetryJob;
+        if (previous != null) {
+            previous.cancel(false);
+        }
+        castRetryJob = scheduler.schedule(() -> {
+            State control = router.state(target, ChromecastRouter.CC_CONTROL);
+            if (control != null && control != PlayPauseType.PLAY) {
+                logger.info("Chromecast spielt nicht — Stream-URL erneut gesendet");
+                router.send(target, ChromecastRouter.CC_PLAYURI, new StringType(url));
+            }
+        }, 5, TimeUnit.SECONDS);
+    }
+
+    /** Übernimmt Lautstärke und Stumm des gewählten Chromecasts in die eigenen Channels. */
+    private void syncFromChromecast() {
+        String target = currentChromecastTarget;
+        State volume = router.state(target, ChromecastRouter.CC_VOLUME);
+        if (volume instanceof PercentType && !volume.equals(lastCastVolume)) {
+            lastCastVolume = volume;
+            updateState(CHANNEL_VOLUME, volume);
+        }
+        State mute = router.state(target, ChromecastRouter.CC_MUTE);
+        if (mute instanceof OnOffType && !mute.equals(lastCastMute)) {
+            lastCastMute = mute;
+            updateState(CHANNEL_MUTE, mute);
+        }
     }
 
     private void handleNext() {
@@ -649,18 +720,25 @@ public class SoundCloudHandler extends BaseThingHandler {
                     int index = currentQueueIndex;
                     scheduler.submit(() -> playTrackInternal(client, track, index));
                 } else if (track != null) {
+                    if ("PAUSED".equals(playbackState)) {
+                        router.send(currentChromecastTarget, ChromecastRouter.CC_CONTROL, PlayPauseType.PLAY);
+                    }
                     playbackState = "PLAYING";
                     updateState(CHANNEL_PLAYBACK_STATE, new StringType("PLAYING"));
                     startProgressTimer();
                 }
                 break;
             case "PAUSE":
+                if (!"PAUSED".equals(playbackState)) {
+                    router.send(currentChromecastTarget, ChromecastRouter.CC_CONTROL, PlayPauseType.PAUSE);
+                }
                 playbackState = "PAUSED";
                 updateState(CHANNEL_PLAYBACK_STATE, new StringType("PAUSED"));
                 stopProgressTimer();
                 break;
             case "STOP":
                 // Track bleibt geladen (Titel, Cover, Warteschlange), damit PLAY ihn wieder starten kann
+                router.send(currentChromecastTarget, ChromecastRouter.CC_STOP, OnOffType.ON);
                 playbackState = "STOPPED";
                 updateState(CHANNEL_PLAYBACK_STATE, new StringType("STOPPED"));
                 resetProgress();
@@ -740,6 +818,10 @@ public class SoundCloudHandler extends BaseThingHandler {
         String streamUrl = currentStreamUrl;
         if (track != null && streamUrl != null) applyTrackToChannels(track, streamUrl);
         updateState(CHANNEL_PLAYBACK_STATE, new StringType(playbackState));
+        // Neu verlinkte Items sollen Lautstärke/Stumm sofort bekommen, nicht erst bei der nächsten Änderung
+        lastCastVolume = null;
+        lastCastMute = null;
+        syncFromChromecast();
     }
 
     private static String hqArtwork(@Nullable String url) {

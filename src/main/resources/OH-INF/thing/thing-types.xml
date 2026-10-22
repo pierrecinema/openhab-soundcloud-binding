@@ -16,6 +16,10 @@
             <channel-group id="search" typeId="search"/>
         </channel-groups>
 
+        <properties>
+            <property name="thingTypeVersion">1</property>
+        </properties>
+
         <config-description>
             <parameter name="clientId" type="text" required="true">
                 <label>Client ID</label>
@@ -37,8 +41,8 @@
             </parameter>
             <parameter name="playUriItem" type="text" required="false">
                 <label>Chromecast Play-URI Item</label>
-                <description>Item that receives stream URLs for the selected Chromecast (new tracks and seek). The router rule forwards it to the active device.</description>
-                <default>SC_CC_PlayURI</default>
+                <description>Leave empty (recommended): the binding sends stream URLs directly to the selected Chromecast. Only set it (e.g. SC_CC_PlayURI) if you still forward URLs through your own router rule.</description>
+                <advanced>true</advanced>
             </parameter>
             <parameter name="chromecastControlItem" type="text" required="false">
                 <label>Chromecast Control Item</label>
@@ -64,6 +68,8 @@
             <channel id="stream-url"     typeId="stream-url"/>
             <channel id="playback-state"      typeId="playback-state"/>
             <channel id="chromecast-target"  typeId="chromecast-target"/>
+            <channel id="volume"             typeId="system.volume"/>
+            <channel id="mute"               typeId="system.mute"/>
             <channel id="queue-index"        typeId="queue-index"/>
             <channel id="queue-size"         typeId="queue-size"/>
             <channel id="repeat"             typeId="repeat"/>

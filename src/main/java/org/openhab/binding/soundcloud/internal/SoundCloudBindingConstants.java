@@ -29,6 +29,10 @@ public class SoundCloudBindingConstants {
     // Chromecast target channel (stores the selected Chromecast playuri item name)
     public static final String CHANNEL_CHROMECAST_TARGET = "player#chromecast-target";
 
+    // Chromecast volume / mute (forwarded to the selected Chromecast, mirrored back from it)
+    public static final String CHANNEL_VOLUME = "player#volume";
+    public static final String CHANNEL_MUTE   = "player#mute";
+
     // Queue / playback mode channels
     public static final String CHANNEL_QUEUE_INDEX = "player#queue-index";
     public static final String CHANNEL_QUEUE_SIZE  = "player#queue-size";

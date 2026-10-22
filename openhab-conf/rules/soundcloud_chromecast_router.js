@@ -1,4 +1,5 @@
 // SoundCloud Chromecast Router (automatic device lookup)
+// LEGACY: not needed since binding v1.6.0 — the binding routes commands to the Chromecast itself. Kept for reference.
 // Triggers: Item Command on SC_CC_Control, SC_CC_Stop, SC_CC_Volume, SC_CC_Mute, SC_CC_PlayURI
 //
 // SC_CCTarget holds the name of the selected Chromecast playuri item. The rule finds the

@@ -1,5 +1,5 @@
 // SoundCloud Auto-Play
-// NOTE: Only needed for binding v1.5.5 and older. Since v1.5.7 the binding sends new tracks itself — disable this rule.
+// LEGACY: only needed for binding v1.5.5 and older. Since v1.5.7 the binding sends new tracks itself — disable this rule.
 // Trigger: Item State Change on SC_StreamURL (item linked to player#stream-url)
 //
 // Fires whenever a new track is loaded (search result, next / previous, playlist, repeat)

@@ -130,35 +130,17 @@ props:
       type: TEXT
       default: Chromecast
       groupName: cast
-    - name: ccControlItem
-      label: Proxy Steuerung
+    - name: volumeItem
+      label: Lautstärke
+      description: Dimmer Item → player#volume (Lautstärke des gewählten Chromecasts)
       type: TEXT
       context: item
-      default: SC_CC_Control
       groupName: cast
-    - name: ccPlayUriItem
-      label: Proxy Play-URI
+    - name: muteItem
+      label: Stumm
+      description: Switch Item → player#mute
       type: TEXT
       context: item
-      default: SC_CC_PlayURI
-      groupName: cast
-    - name: ccStopItem
-      label: Proxy Stop
-      type: TEXT
-      context: item
-      default: SC_CC_Stop
-      groupName: cast
-    - name: ccVolumeItem
-      label: Proxy Lautstärke
-      type: TEXT
-      context: item
-      default: SC_CC_Volume
-      groupName: cast
-    - name: ccMuteItem
-      label: Proxy Stumm
-      type: TEXT
-      context: item
-      default: SC_CC_Mute
       groupName: cast
 component: f7-card
 config:
@@ -262,8 +244,8 @@ slots:
                           iconF7: stop_fill
                           iconSize: 20
                           action: command
-                          actionItem: =props.ccStopItem
-                          actionCommand: "ON"
+                          actionItem: =props.stateItem
+                          actionCommand: STOP
           # Suche
           - component: div
             config:
@@ -499,13 +481,13 @@ slots:
                     action: command
                     actionItem: =props.stateItem
                     actionCommand: PREVIOUS
-                # Play / Pause: Pause und Fortsetzen über den Chromecast; gestoppt -> PLAY ans Binding (startet den Track neu, ab v1.5.7)
+                # Play / Pause: Pause und Fortsetzen über den Chromecast; gestoppt -> PLAY ans Binding (startet den Track neu, ab v1.5.6)
                 - component: oh-link
                   config:
                     iconF7: "=@@props.stateItem === 'PLAYING' ? 'pause_fill' : 'play_fill'"
                     iconSize: 30
                     action: command
-                    actionItem: "=['PLAYING', 'PAUSED'].includes(@@props.stateItem) ? props.ccControlItem : props.stateItem"
+                    actionItem: =props.stateItem
                     actionCommand: "=@@props.stateItem === 'PLAYING' ? 'PAUSE' : 'PLAY'"
                     style:
                       display: flex
@@ -537,7 +519,7 @@ slots:
                     actionCommand: "=@@props.repeatItem === 'PLAYLIST' ? 'TRACK' : (@@props.repeatItem === 'TRACK' ? 'OFF' : 'PLAYLIST')"
                     style:
                       opacity: "=props.repeatItem && ['PLAYLIST', 'TRACK'].includes(@@props.repeatItem) ? 1 : 0.55"
-          # Lautstärke (Chromecast)
+          # Lautstärke (Chromecast, über player#volume / player#mute)
           - component: div
             config:
               style:
@@ -551,15 +533,15 @@ slots:
                   config:
                     class:
                       - sc-ctrl
-                    iconF7: "=@@props.ccMuteItem === 'ON' ? 'speaker_slash' : 'speaker_2'"
+                    iconF7: "=@@props.muteItem === 'ON' ? 'speaker_slash' : 'speaker_2'"
                     iconSize: 20
                     action: toggle
-                    actionItem: =props.ccMuteItem
+                    actionItem: =props.muteItem
                     actionCommand: "ON"
                     actionCommandAlt: "OFF"
                 - component: oh-slider
                   config:
-                    item: =props.ccVolumeItem
+                    item: =props.volumeItem
                     min: 0
                     max: 100
                     step: 1
@@ -571,7 +553,7 @@ slots:
                       --f7-range-knob-color: white
                 - component: span
                   config:
-                    content: "=Number(@@props.ccVolumeItem) >= 0 ? Math.round(Number(@@props.ccVolumeItem)) : '-'"
+                    content: "=Number(@@props.volumeItem) >= 0 ? Math.round(Number(@@props.volumeItem)) : '-'"
                     style:
                       width: 30px
                       text-align: right

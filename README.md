@@ -4,30 +4,25 @@
 A community binding that connects openHAB to SoundCloud.  
 Search tracks, view cover art and stream audio directly to a Chromecast — all from a single MainUI widget.
 
-> **Status: Beta** — core features are working. Feedback welcome in the openHAB community forum.
+> **Status: Beta (v1.6.1)** — core features are working. Feedback welcome in the openHAB community forum.
 > https://community.openhab.org/t/openhab-soundcloud-binding-new/169324/2
 
 ---
 
-## Features (v1.5.7)
+## Features (v1.6.1)
 
 - **Search** tracks by keyword — results appear instantly in the widget list
 - **Cover art** at 500 × 500 px displayed alongside title and artist
-- **Stream URL** resolved automatically to a direct MP3 link (progressive format, Chromecast-compatible)
-- **Chromecast integration** built into the widget — select a Chromecast, press Play
-- **Volume slider** for real-time Chromecast volume control
-- **Pause / Stop / Mute** buttons mapped to the correct Chromecast binding channels
-- **Playback state** channel (PLAYING / PAUSED / STOPPED)
-- **OAuth 2.0** authentication — authorise once in the browser, tokens are stored and auto-refreshed
-- **Progress bar** — elapsed time / total duration shown in the widget, updates every second
-- **Seek / 30-second skip** — slider and skip buttons seek within the track (progressive MP3 range request, or an HLS playlist proxy with CORS headers for Chromecast)
-- **Playlist queue** — load a full playlist and navigate through all tracks with Next / Previous
-- **Auto-advance** — automatically plays the next track when the current one ends
-- **Repeat modes** — OFF / Repeat Track / Repeat Playlist
-- **Shuffle** — randomises playback order within the queue
-- **Track counter** — shows current position in queue (e.g. 3 / 12) in the widget
-- **Auto-play on the Chromecast** — every newly loaded track is sent to the selected Chromecast by the binding itself (no auto-play rule needed since v1.5.7)
+- **Chromecast playback built into the binding** — select a Chromecast, tap a track; every newly loaded track starts automatically
+- **Pause / Play / Stop, volume and mute** — the binding controls the selected Chromecast directly, no rules or proxy items needed
+- **Volume and mute mirrored back** — changes made on the Chromecast (e.g. in the Google Home app) show up in openHAB within ~2 s
+- **Reliable start** — if the Chromecast first has to launch its cast app, the stream URL is resent automatically after 5 s
 - **Stop keeps the track** — Play after Stop restarts the same track with a fresh stream URL
+- **Seek / 30-second skip** — progressive MP3 range request, or an HLS playlist proxy with CORS headers for Chromecast
+- **Playlist queue** with Next / Previous, auto-advance, repeat (OFF / TRACK / PLAYLIST) and shuffle
+- **Progress bar** and **track counter** (e.g. 3 / 12)
+- **OAuth 2.0** — authorise once in the browser, tokens are stored and refreshed automatically
+- **Two MainUI widgets** — a now-playing card and a Spotify-like layout
 
 ---
 
@@ -41,8 +36,10 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 |-------------|-------|
 | openHAB **5.1.3 or newer** | older versions are not supported |
 | Java 21+ | bundled with openHAB 5.x |
-| SoundCloud API credentials | register an app at [soundcloud.com/you/apps](https://soundcloud.com/you/apps) — free for personal/home use |
-| openHAB Chromecast Binding | optional, required for cast functionality |
+| SoundCloud API credentials | every user registers their own app at [soundcloud.com/you/apps](https://soundcloud.com/you/apps) and gets their own Client ID and Client Secret — free for personal/home use |
+| openHAB Chromecast Binding | required for playback |
+
+No rule engine and no JavaScript Scripting add-on are needed (since v1.6.0).
 
 ---
 
@@ -50,23 +47,22 @@ Search tracks, view cover art and stream audio directly to a Chromecast — all 
 
 ### 1. Download the JAR
 
-Download `org.openhab.binding.soundcloud-1.5.7.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder.
+Download `org.openhab.binding.soundcloud-1.6.1.jar` from the [latest release](https://github.com/pierrecinema/openhab-soundcloud-binding/releases/latest) and copy it to your openHAB `addons/` folder. **Remove older versions of the JAR first.**
 
 openHAB detects and loads the bundle automatically — no restart needed. Check **Settings → Bindings** to confirm it appears.
 
-### 2. Install the widget
+> After swapping the JAR a thing may stay `UNINITIALIZED`. Disable and re-enable it once (Settings → Things → the thing → ⋮).
+
+### 2. Install a widget
 
 1. In the openHAB MainUI open **Developer Tools → Widgets**
-2. Click the **+** button → import
-3. Paste the content of `soundcloud_search.yaml` (also in the release assets)
-4. Save
-
-Two widgets are available in [`openhab-conf/widgets`](openhab-conf/widgets):
+2. Click **+** and paste the content of one of the widget files (also in the release assets)
+3. Save
 
 | Widget | Layout |
 |---|---|
-| `soundcloud_search.yaml` | Spotify-like: cover and search side by side, player bar at the bottom |
-| `soundcloud_nowplaying.yaml` | Now-playing card: background follows the cover colours, scrolling title, search panel, seekable progress bar, Chromecast chips (see [Now-playing widget](#now-playing-widget-soundcloud_nowplaying)) |
+| [`soundcloud_nowplaying.yaml`](openhab-conf/widgets/soundcloud_nowplaying.yaml) | Now-playing card: background follows the cover colours, scrolling title, search panel, seekable progress bar, Chromecast chips |
+| [`soundcloud_search.yaml`](openhab-conf/widgets/soundcloud_search.yaml) | Spotify-like: cover and search side by side, player bar at the bottom; follows the light / dark theme |
 
 ### 3. Build from source (optional)
 
@@ -74,7 +70,7 @@ Two widgets are available in [`openhab-conf/widgets`](openhab-conf/widgets):
 git clone https://github.com/pierrecinema/openhab-soundcloud-binding.git
 cd openhab-soundcloud-binding
 mvn clean package -DskipTests
-# copy target/org.openhab.binding.soundcloud-1.5.7.jar to your addons/ folder (remove older versions first)
+# copy target/org.openhab.binding.soundcloud-1.6.1.jar to your addons/ folder (remove older versions first)
 ```
 
 ---
@@ -95,14 +91,18 @@ Thing soundcloud:account:myaccount "SoundCloud" [
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `clientId` | ✅ | Client ID from [soundcloud.com/you/apps](https://soundcloud.com/you/apps) |
-| `clientSecret` | ✅ | Client Secret from your registered app |
+| `clientId` | ✅ | Client ID of your app from [soundcloud.com/you/apps](https://soundcloud.com/you/apps) |
+| `clientSecret` | ✅ | Client Secret of your app |
 | `redirectUri` | ✅ | Must match exactly what is registered in your SoundCloud app |
-| `playUriItem` | optional | Item that receives stream URLs for the selected Chromecast — new tracks and seek (default `SC_CC_PlayURI`, forwarded by the [routing rule](#chromecast-routing-rule)) |
+| `webClientId` | optional | Web client ID used for the search (SoundCloud api-v2). A default is included — see below if SoundCloud rotates it |
+| `playUriItem` | advanced | Leave empty. Only for setups that still forward stream URLs through their own router rule |
 
+**Finding the current web client ID** (only needed if the search stops working):
 
-| `webClientId` | optional | Internal SoundCloud web client ID for api-v2 (default value included) |
-Step-by-Step Guide to Finding the Current Client IDOpen the website: Go to the official SoundCloud website in any desktop browser.Open developer tools: Press F12 (Ctrl + Shift + I on Windows/Linux or Cmd + Opt + I on Mac).Go to network tab: Click on the Network tab inside the developer tools window.Apply search filter: Type client_id into the filter search box to narrow down the requests.Refresh and play: Reload the page (F5) and play any track if no results appear.Copy your ID: Click on a filtered XHR request (e.g., an api-v2.soundcloud.com/... URL).Extract the code: Find the client_id= parameter inside the URL to copy the 32-character alphanumeric code.
+1. Open soundcloud.com in a desktop browser and press **F12** to open the developer tools
+2. Go to the **Network** tab and type `client_id` into the filter box
+3. Reload the page (F5) and play any track if nothing appears
+4. Click a request to `api-v2.soundcloud.com/...` and copy the 32-character value of the `client_id=` parameter
 
 ### OAuth authorisation
 
@@ -114,76 +114,87 @@ Create `conf/items/soundcloud.items` (or add via the UI):
 
 ```
 // Player
-String   SC_TrackID       "Track ID"        { channel="soundcloud:account:myaccount:player#track-id" }
-String   SC_Title         "Titel [%s]"      { channel="soundcloud:account:myaccount:player#title" }
-String   SC_Artist        "Artist [%s]"     { channel="soundcloud:account:myaccount:player#artist" }
-String   SC_ArtworkURL    "Cover [%s]"      { channel="soundcloud:account:myaccount:player#artwork-url" }
-Number   SC_Duration      "Dauer [%.0f s]"  { channel="soundcloud:account:myaccount:player#duration" }
-Number   SC_Elapsed       "Elapsed [%.0f s]"{ channel="soundcloud:account:myaccount:player#elapsed-time" }
-String   SC_StreamURL     "Stream URL [%s]" { channel="soundcloud:account:myaccount:player#stream-url" }
-String   SC_State         "Status [%s]"     { channel="soundcloud:account:myaccount:player#playback-state" }
-String   SC_CCTarget      "CC Target [%s]"  { channel="soundcloud:account:myaccount:player#chromecast-target" }
+String   SC_TrackID       "Track ID"          { channel="soundcloud:account:myaccount:player#track-id" }
+String   SC_Title         "Title [%s]"        { channel="soundcloud:account:myaccount:player#title" }
+String   SC_Artist        "Artist [%s]"       { channel="soundcloud:account:myaccount:player#artist" }
+String   SC_ArtworkURL    "Cover [%s]"        { channel="soundcloud:account:myaccount:player#artwork-url" }
+Number   SC_Duration      "Duration [%.0f s]" { channel="soundcloud:account:myaccount:player#duration" }
+Number   SC_Elapsed       "Elapsed [%.0f s]"  { channel="soundcloud:account:myaccount:player#elapsed-time" }
+String   SC_StreamURL     "Stream URL [%s]"   { channel="soundcloud:account:myaccount:player#stream-url" }
+String   SC_State         "Status [%s]"       { channel="soundcloud:account:myaccount:player#playback-state" }
+String   SC_CCTarget      "Chromecast [%s]"   { channel="soundcloud:account:myaccount:player#chromecast-target" }
+Dimmer   SC_Volume        "Volume [%d %%]"    { channel="soundcloud:account:myaccount:player#volume" }
+Switch   SC_Mute          "Mute"              { channel="soundcloud:account:myaccount:player#mute" }
+Number   SC_QueueIndex    "Track [%d]"        { channel="soundcloud:account:myaccount:player#queue-index" }
+Number   SC_QueueSize     "Tracks [%d]"       { channel="soundcloud:account:myaccount:player#queue-size" }
+String   SC_Repeat        "Repeat [%s]"       { channel="soundcloud:account:myaccount:player#repeat" }
+Switch   SC_Shuffle       "Shuffle"           { channel="soundcloud:account:myaccount:player#shuffle" }
 
 // Search
-String   SC_Query         "Suche [%s]"      { channel="soundcloud:account:myaccount:search#query" }
-String   SC_Results       "Ergebnisse [%s]" { channel="soundcloud:account:myaccount:search#results" }
+String   SC_Query         "Search [%s]"       { channel="soundcloud:account:myaccount:search#query" }
+String   SC_Results       "Results [%s]"      { channel="soundcloud:account:myaccount:search#results" }
 ```
 
-For Chromecast, you also need the items from the **Chromecast Binding** already linked to your Chromecast thing. The widget uses these directly — no additional items need to be created manually.  
-Tag your Chromecast `playuri` items with `Chromecast` so the widget discovers them automatically:
+### Chromecasts
+
+The binding controls your Chromecasts through the items of the **Chromecast binding**. For every Chromecast you want to use:
+
+1. Link its `playuri`, `control`, `stop`, `volume` and `mute` channels to items
+2. Tag the `playuri` item with `Chromecast` — it appears as a chip in the widgets
 
 ```
-String MyChromecast_PlayURI "Chromecast Wohnzimmer" [ "Chromecast" ] { channel="chromecast:chromecast:abc123:playuri" }
+String Wohnzimmer_PlayURI "Wohnzimmer" [ "Chromecast" ] { channel="chromecast:chromecast:abc123:playuri" }
+Player Wohnzimmer_Control "Wohnzimmer Control"          { channel="chromecast:chromecast:abc123:control" }
+Switch Wohnzimmer_Stop    "Wohnzimmer Stop"             { channel="chromecast:chromecast:abc123:stop" }
+Dimmer Wohnzimmer_Volume  "Wohnzimmer Volume"           { channel="chromecast:chromecast:abc123:volume" }
+Switch Wohnzimmer_Mute    "Wohnzimmer Mute"             { channel="chromecast:chromecast:abc123:mute" }
 ```
+
+Selecting a chip writes the name of the `playuri` item to `player#chromecast-target`. The binding finds the other items of that Chromecast through the channel links.
 
 ---
 
 ## Widget setup
 
-Add the `soundcloud_search` widget to a page and configure the following properties:
-
-| Property | Required | Description |
-|----------|----------|-------------|
-| `queryItem` | ✅ | String Item → `search#query` |
-| `resultsItem` | ✅ | String Item → `search#results` |
-| `trackIdItem` | ✅ | String Item → `player#track-id` |
-| `streamUrlItem` | | String Item → `player#stream-url` |
-| `titleItem` | | String Item → `player#title` |
-| `artistItem` | | String Item → `player#artist` |
-| `artworkItem` | | String Item → `player#artwork-url` |
-| `stateItem` | | String Item → `player#playback-state` |
-| `chromecastTargetItem` | | String Item linked to `player#chromecast-target` — stores the selected Chromecast (e.g. `SC_CCTarget`) |
-| `chromecastTag` | | Tag on your Chromecast `playuri` items (default: `Chromecast`) |
-| `elapsedItem` | | Number Item linked to `player#elapsed-time` — enables the progress bar |
-| `durationItem` | | Number Item linked to `player#duration` — required for the progress bar |
-| `queueIndexItem` | | Number Item linked to `player#queue-index` — shows current queue position |
-| `queueSizeItem` | | Number Item linked to `player#queue-size` — required for track counter (e.g. 3/12) |
-| `repeatItem` | | String Item linked to `player#repeat` — enables the repeat button (OFF → PLAYLIST → TRACK cycle) |
-| `shuffleItem` | | Switch Item linked to `player#shuffle` — enables the shuffle toggle |
-
-> **Note:** Pause, Stop, Volume and Mute are routed via four fixed proxy items (`SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`) and a routing rule — see [Chromecast routing rule](#chromecast-routing-rule) below. No per-device configuration is needed in the widget.
-
 ### Now-playing widget (`soundcloud_nowplaying`)
 
-Same items, different look: the blurred cover fills the background, long titles scroll, the search opens from the magnifier icon (Enter or ✓ searches, tapping a result loads and plays it), the progress bar is seekable and the selected Chromecast is shown as a chip — tap it to pick another device.
+The blurred cover fills the background, long titles scroll, the search opens from the magnifier icon (Enter or ✓ searches, tapping a result loads and plays it), the progress bar is seekable and the selected Chromecast is shown as a chip — tap it to pick another device.
 
-| Property | Required | Description |
-|----------|----------|-------------|
-| `titleItem` | ✅ | → `player#title` |
-| `stateItem` | ✅ | → `player#playback-state` |
-| `trackIdItem` | ✅ | → `player#track-id` |
-| `queryItem` | ✅ | → `search#query` |
-| `resultsItem` | ✅ | → `search#results` |
-| `targetItem` | ✅ | → `player#chromecast-target` (e.g. `SC_CCTarget`) |
-| `artistItem`, `artworkItem`, `streamUrlItem` | | → `player#artist`, `player#artwork-url`, `player#stream-url` |
-| `elapsedItem`, `durationItem` | | → `player#elapsed-time`, `player#duration` (progress bar) |
-| `seekPctItem` | | Number item 0–100 for seeking via the progress bar (needs a small rule that converts % to seconds and sends it to `elapsedItem`) |
-| `queueIndexItem`, `queueSizeItem` | | → `player#queue-index`, `player#queue-size` (shows "3 / 12") |
-| `shuffleItem`, `repeatItem` | | → `player#shuffle`, `player#repeat` |
+| Property | Required | Item |
+|----------|----------|------|
+| `titleItem` | ✅ | `player#title` |
+| `stateItem` | ✅ | `player#playback-state` |
+| `trackIdItem` | ✅ | `player#track-id` |
+| `queryItem` | ✅ | `search#query` |
+| `resultsItem` | ✅ | `search#results` |
+| `targetItem` | ✅ | `player#chromecast-target` |
+| `volumeItem`, `muteItem` | | `player#volume`, `player#mute` |
+| `artistItem`, `artworkItem`, `streamUrlItem` | | `player#artist`, `player#artwork-url`, `player#stream-url` |
+| `elapsedItem`, `durationItem` | | `player#elapsed-time`, `player#duration` (progress bar) |
+| `seekPctItem` | | Number item 0–100 for seeking with the progress bar — needs the [seek rule](#seek-rule-optional) |
+| `queueIndexItem`, `queueSizeItem` | | `player#queue-index`, `player#queue-size` (shows "3 / 12") |
+| `shuffleItem`, `repeatItem` | | `player#shuffle`, `player#repeat` |
 | `chromecastTag` | | Tag on your Chromecast `playuri` items (default `Chromecast`) |
-| `ccControlItem`, `ccStopItem`, `ccVolumeItem`, `ccMuteItem`, `ccPlayUriItem` | | Proxy items (defaults `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`, `SC_CC_PlayURI`) |
 
-Play/Pause: while playing, Play pauses the Chromecast; while paused it resumes (no restart); when stopped it sends PLAY to the binding, which restarts the track with a fresh stream URL (v1.5.7+). New tracks start automatically — sent by the binding itself since v1.5.7 (older versions need the [auto-play rule](#auto-play-rule)).
+### Spotify-like widget (`soundcloud_search`)
+
+| Property | Required | Item |
+|----------|----------|------|
+| `queryItem` | ✅ | `search#query` |
+| `resultsItem` | ✅ | `search#results` |
+| `trackIdItem` | ✅ | `player#track-id` |
+| `stateItem` | ✅ | `player#playback-state` |
+| `chromecastTargetItem` | ✅ | `player#chromecast-target` |
+| `volumeItem`, `muteItem` | | `player#volume`, `player#mute` |
+| `titleItem`, `artistItem`, `artworkItem`, `streamUrlItem` | | `player#title`, `player#artist`, `player#artwork-url`, `player#stream-url` |
+| `elapsedItem`, `durationItem` | | `player#elapsed-time`, `player#duration` (progress bar, 30-second skip) |
+| `queueIndexItem`, `queueSizeItem` | | `player#queue-index`, `player#queue-size` |
+| `repeatItem`, `shuffleItem` | | `player#repeat`, `player#shuffle` |
+| `chromecastTag` | | Tag on your Chromecast `playuri` items (default `Chromecast`) |
+
+### Seek rule (optional)
+
+The progress bar of `soundcloud_nowplaying` works in percent. To seek with it, create a `Number SC_SeekPct` item, set it as `seekPctItem` and add a rule with an **Item State Change** trigger on `SC_Elapsed` and an **Item Command** trigger on `SC_SeekPct`, using [`openhab-conf/rules/soundcloud_seek_sync.js`](openhab-conf/rules/soundcloud_seek_sync.js). Without it, the progress bar is display-only.
 
 ---
 
@@ -191,83 +202,38 @@ Play/Pause: while playing, Play pauses the Chromecast; while paused it resumes (
 
 | Channel | Type | R/W | Description |
 |---------|------|-----|-------------|
-| `player#track-id` | String | RW | Write a track ID to load it; reads back the current track ID |
-| `player#playlist-id` | String | W | Write a playlist ID to load its first track |
+| `player#track-id` | String | RW | Write a track ID to load and play it; reads back the current track ID |
+| `player#playlist-id` | String | W | Write a playlist ID to load it into the queue |
 | `player#title` | String | R | Current track title |
 | `player#artist` | String | R | Current track artist / uploader |
 | `player#artwork-url` | String | R | 500×500 px cover art URL |
 | `player#duration` | Number | R | Track duration in seconds |
-| `player#elapsed-time` | Number | R | Elapsed playback time in seconds — updates every second, resets on new track |
-| `player#stream-url` | String | R | Direct MP3 URL (resolved via api-v2 transcodings) |
-| `player#playback-state` | String | RW | PLAYING / PAUSED / STOPPED |
-| `player#chromecast-target` | String | RW | Name of the selected Chromecast playuri item |
+| `player#elapsed-time` | Number | RW | Elapsed time in seconds (updates every second); write seconds to seek |
+| `player#stream-url` | String | R | Current stream URL (HLS or progressive MP3) |
+| `player#playback-state` | String | RW | PLAYING / PAUSED / STOPPED; accepts PLAY, PAUSE, STOP, NEXT, PREVIOUS |
+| `player#chromecast-target` | String | RW | Name of the selected Chromecast `playuri` item |
+| `player#volume` | Dimmer | RW | Volume of the selected Chromecast |
+| `player#mute` | Switch | RW | Mute of the selected Chromecast |
 | `player#queue-index` | Number | R | Current track position in the queue (1-based) |
-| `player#queue-size` | Number | R | Total number of tracks in the current queue |
-| `player#repeat` | String | RW | Repeat mode: OFF / TRACK / PLAYLIST |
+| `player#queue-size` | Number | R | Total number of tracks in the queue |
+| `player#repeat` | String | RW | OFF / TRACK / PLAYLIST |
 | `player#shuffle` | Switch | RW | Shuffle playback order |
 | `search#query` | String | W | Send a search term |
 | `search#results` | String | R | JSON array: `[{id, title, artist, artwork, duration}, …]` |
 
 ---
 
-## Chromecast workflow
+## Upgrading from v1.5.x
 
-1. **Search** — type a term and press Enter
-2. **Select a track** — tap a result to load cover, title, artist and stream URL
-3. **Select a Chromecast** — tap a chip at the bottom of the card (discovered automatically via item tags)
-4. **Press Play** — the stream URL is sent directly to the selected Chromecast
-5. **Volume / Mute / Pause / Stop** — dedicated buttons and slider in the widget
+v1.6.0 moved the Chromecast routing into the binding. Existing things get the new `volume` / `mute` channels automatically (and the old `my-playlists` channel is removed).
 
----
+1. Replace the JAR (remove the old one first)
+2. Create and link items for `player#volume` and `player#mute`, set them as `volumeItem` / `muteItem` in the widget
+3. Clear the thing parameter `playUriItem` (Settings → Things → the thing → show advanced)
+4. Re-import the widgets from this release
+5. **Disable** the router rule and the auto-play rule; the proxy items `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute` and `SC_CC_PlayURI` are no longer used
 
-## Chromecast routing rule
-
-The widget's Pause, Stop, Volume and Mute buttons always send to four fixed proxy items (`SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`). A JS rule reads which Chromecast is currently selected and forwards the command to the correct device-specific item.
-
-**Why is a rule needed?**  
-Widget expressions can only use fixed item names. They cannot dynamically look up which control item belongs to the currently selected Chromecast. The routing rule bridges this gap — one rule handles all devices, no per-device widget configuration required.
-
-> **Planned for v1.3:** This logic will move into the binding itself, eliminating the need for any rule.
-
-### Setup
-
-**Step 1 — Create the proxy items** (once, in Settings → Items or via `.items` file):
-
-```
-Player SC_CC_Control "SoundCloud CC Control"
-Switch SC_CC_Stop    "SoundCloud CC Stop"
-Dimmer SC_CC_Volume  "SoundCloud CC Volume"
-Switch SC_CC_Mute    "SoundCloud CC Mute"
-String SC_CC_PlayURI "SoundCloud CC Play URI"   // used by the binding for seeking
-```
-
-Also create the target item and link it to the binding channel:
-
-```
-String SC_CCTarget "SoundCloud CC Target" { channel="soundcloud:account:myaccount:player#chromecast-target" }
-```
-
-**Step 2 — Create the routing rule** in Settings → Rules → + (ECMAScript 2021+), with **Item Command** triggers on `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute` and `SC_CC_PlayURI`. Paste the script from [`openhab-conf/rules/soundcloud_chromecast_router.js`](openhab-conf/rules/soundcloud_chromecast_router.js).
-
-The rule looks up the Chromecast thing behind the selected `playuri` item and forwards each command to the item linked to the matching channel (`control`, `stop`, `volume`, `mute`, `playuri`). There is **no per-device mapping** to maintain. Adjust `STATE_ITEM` at the top if your playback-state item is not called `SC_State`.
-
-**Step 3 — Configure the widget:**
-
-- `chromecastTargetItem` (or `targetItem` in `soundcloud_nowplaying`) = `SC_CCTarget`
-- All other Chromecast props: leave empty
-
-### Adding a new Chromecast
-
-1. Link the device's `playuri`, `control`, `stop`, `volume` and `mute` channels to items
-2. Tag the `playuri` item with `Chromecast` — it appears automatically as a chip in the widget and the router finds the other items by itself
-
-### Auto-play rule (only for v1.5.5 and older)
-
-> **Since v1.5.7 the binding sends every new track to `playUriItem` itself — do not use this rule with v1.5.7 or newer**, otherwise each track is sent twice. The router's retry still applies.
-
-Starts every newly loaded track on the selected Chromecast (search result, next / previous, playlist, repeat). Create a rule with an **Item State Change** trigger on `SC_StreamURL` (the item linked to `player#stream-url`) and paste [`openhab-conf/rules/soundcloud_autoplay.js`](openhab-conf/rules/soundcloud_autoplay.js). The rule sends the URL through `SC_CC_PlayURI`, so the router forwards it to the selected device and **resends it once after 5 s** if the Chromecast is not playing yet. This happens when no cast app was running: the first command only launches the receiver app.
-
-> Trigger on the **stream URL**, not on the playback state: loading a new track while already playing does not change the state, and resuming after a pause would restart the track.
+The old rule scripts stay in [`openhab-conf/rules`](openhab-conf/rules) for reference.
 
 ---
 
@@ -283,18 +249,19 @@ Starts every newly loaded track on the selected Chromecast (search result, next 
 | v1.4.10 | ✅ done | Seek: 30-second skip and slider via progressive MP3 + HTTP Range-Request |
 | v1.5.0  | ✅ done | Playlist queue: next / previous, auto-advance, repeat (OFF/TRACK/PLAYLIST), shuffle |
 | v1.5.4  | ✅ done | Stability: removed experimental playlist-browse feature |
-| v1.5.5  | ✅ done | Widget redesign: Spotify-like layout — cover + meta left, search right, full-width player bar; responsive mobile support |
-| v1.5.7  | ✅ done | Binding sends new tracks to the Chromecast itself (auto-play rule obsolete); configurable `playUriItem`; Stop keeps the track; seek works again with HLS streams (CORS headers + .m3u8 path on the seek proxy); no hard-coded IP fallback; new `soundcloud_nowplaying` widget; automatic router rule |
-| v1.6.0  | planned | Router inside the binding: volume / mute / pause via binding channels, no proxy items or rules |
-| v1.6.x  | planned | Likes / stream feed — browse your own liked tracks |
+| v1.5.5  | ✅ done | Widget redesign: Spotify-like layout; responsive mobile support |
+| v1.5.7  | ✅ done | Binding sends new tracks to the Chromecast itself; Stop keeps the track; HLS seek fix (CORS); new `soundcloud_nowplaying` widget |
+| v1.6.1  | ✅ done | Chromecast routing inside the binding: `volume` / `mute` channels mirrored from the device, pause / play / stop via `playback-state`, retry after cast-app launch — no rules or proxy items needed |
+| v1.7.x  | planned | Likes / stream feed — browse your own liked tracks |
 | v2.0.0  | planned | Submit to openHAB add-ons repository |
 
 ---
 
-## Known limitations (Alpha)
+## Known limitations
 
-- Stream URLs are time-limited by SoundCloud and expire after some time; reloading the track generates a fresh URL
-- The SoundCloud API requires a registered app — streaming is only available when a valid Client ID / OAuth token is configured
+- Stream URLs are time-limited by SoundCloud; reloading the track (or Play after Stop) generates a fresh URL
+- The playback state reflects the binding, not the Chromecast — if another app takes over the Chromecast, the state may still show PLAYING
+- The search uses SoundCloud's web API (api-v2); if SoundCloud rotates the web client ID, update `webClientId` (see [Thing](#thing))
 
 ---
 

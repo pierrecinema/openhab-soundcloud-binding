@@ -75,6 +75,16 @@ props:
       description: "Tag on your Chromecast playuri items (default: Chromecast)"
       type: TEXT
       required: false
+    - name: volumeItem
+      label: Volume Item
+      description: Dimmer Item linked to player#volume (v1.6.0+)
+      type: TEXT
+      context: item
+    - name: muteItem
+      label: Mute Item
+      description: Switch Item linked to player#mute (v1.6.0+)
+      type: TEXT
+      context: item
     - name: chromecastTargetItem
       label: Chromecast Target Item
       description: String Item linked to soundcloud:account:...:player#chromecast-target (e.g. SC_CCTarget)
@@ -98,7 +108,7 @@ component: f7-card
 config:
   style:
     margin: "0"
-    background: "#111118"
+    background: "var(--f7-card-bg-color)"
     overflow: hidden
     display: flex
     flexDirection: column
@@ -129,8 +139,8 @@ slots:
                 display: flex
                 flexDirection: column
                 gap: 10px
-                borderRight: "1px solid rgba(255,255,255,0.08)"
-                borderBottom: "1px solid rgba(255,255,255,0.05)"
+                borderRight: "1px solid var(--f7-block-strong-border-color)"
+                borderBottom: "1px solid var(--f7-block-strong-border-color)"
                 overflow: hidden
                 boxSizing: border-box
             slots:
@@ -146,7 +156,7 @@ slots:
                       height: auto
                       borderRadius: 8px
                       objectFit: cover
-                      background: "#1a1a2a"
+                      background: "var(--f7-input-bg-color)"
                 # Titel
                 - component: f7-chip
                   config:
@@ -154,7 +164,7 @@ slots:
                     style:
                       fontSize: 14px
                       fontWeight: "600"
-                      color: "#fff"
+                      color: "var(--f7-text-color)"
                       backgroundColor: transparent
                       padding: "0"
                       margin: "0"
@@ -180,7 +190,7 @@ slots:
                     text: "=((+(@@props.durationItem)||0)/60|0)+' Min.'"
                     style:
                       fontSize: 10px
-                      color: "#555"
+                      color: "var(--f7-block-title-text-color)"
                       backgroundColor: transparent
                       padding: "0"
                       margin: "0"
@@ -189,7 +199,7 @@ slots:
                   config:
                     style:
                       fontSize: 9px
-                      color: "#333"
+                      color: "var(--f7-block-title-text-color)"
                       textTransform: uppercase
                       letterSpacing: "0.8px"
                       margin: "8px 0 4px 0"
@@ -238,7 +248,7 @@ slots:
                   config:
                     style:
                       padding: "8px 12px"
-                      borderBottom: "1px solid rgba(255,255,255,0.08)"
+                      borderBottom: "1px solid var(--f7-block-strong-border-color)"
                       flexShrink: "0"
                   slots:
                     default:
@@ -246,7 +256,7 @@ slots:
                         config:
                           style:
                             fontSize: 9px
-                            color: "#444"
+                            color: "var(--f7-block-title-text-color)"
                             textTransform: uppercase
                             letterSpacing: "0.8px"
                             margin: "0 0 5px 0"
@@ -259,10 +269,10 @@ slots:
                           sendButton: true
                           style:
                             fontSize: 11px
-                            border: "1px solid rgba(255,85,0,0.45)"
+                            border: "1px solid rgba(255,85,0,0.6)"
                             borderRadius: 4px
                             padding: "3px 8px"
-                            background: "#1a1a2a"
+                            background: "var(--f7-input-bg-color)"
                             width: 100%
                             boxSizing: border-box
 
@@ -271,7 +281,7 @@ slots:
                   config:
                     style:
                       fontSize: 9px
-                      color: "#333"
+                      color: "var(--f7-block-title-text-color)"
                       textTransform: uppercase
                       letterSpacing: "0.8px"
                       margin: "6px 12px 2px"
@@ -283,7 +293,7 @@ slots:
                   config:
                     noHairlines: true
                     style:
-                      maxHeight: 352px
+                      maxHeight: 484px
                       overflowY: auto
                       margin: "0"
                       padding: "2px 0"
@@ -318,9 +328,9 @@ slots:
     - component: f7-card-content
       config:
         style:
-          borderTop: "1px solid rgba(255,255,255,0.08)"
+          borderTop: "1px solid var(--f7-block-strong-border-color)"
           padding: "9px 14px 11px"
-          background: "#0c0c13"
+          background: "var(--f7-bars-bg-color)"
           flexShrink: "0"
       slots:
         default:
@@ -353,7 +363,7 @@ slots:
                     iconF7: gobackward_30
                     iconSize: 18
                     style:
-                      color: "#777"
+                      color: "var(--f7-block-title-text-color)"
                       flexShrink: "0"
                     action: command
                     actionItem: "=props.elapsedItem"
@@ -369,14 +379,14 @@ slots:
                       flex: "1"
                       "--f7-range-bar-active-bg-color": "#ff5500"
                       "--f7-range-knob-color": "#ff5500"
-                      "--f7-range-bar-bg-color": "#2a2a3a"
+                      "--f7-range-bar-bg-color": "var(--f7-range-bar-bg-color)"
                 # +30s
                 - component: oh-button
                   config:
                     iconF7: goforward_30
                     iconSize: 18
                     style:
-                      color: "#777"
+                      color: "var(--f7-block-title-text-color)"
                       flexShrink: "0"
                     action: command
                     actionItem: "=props.elapsedItem"
@@ -387,7 +397,7 @@ slots:
                     text: "=((+(@@props.durationItem)||0)/60|0)+':'+(((+(@@props.durationItem)||0)%60|0)<10?'0':'')+((+(@@props.durationItem)||0)%60|0)"
                     style:
                       fontSize: 10px
-                      color: "#444"
+                      color: "var(--f7-block-title-text-color)"
                       backgroundColor: transparent
                       fontVariantNumeric: tabular-nums
                       padding: "0"
@@ -427,10 +437,10 @@ slots:
                           iconF7: play_fill
                           iconSize: 28
                           style:
-                            color: "#fff"
+                            color: "var(--f7-text-color)"
                           action: command
-                          actionItem: "=@@props.chromecastTargetItem"
-                          actionCommand: "=@@props.streamUrlItem"
+                          actionItem: "=props.stateItem"
+                          actionCommand: PLAY
                       # Pause
                       - component: oh-button
                         config:
@@ -439,7 +449,7 @@ slots:
                           style:
                             color: "#ff7733"
                           action: command
-                          actionItem: SC_CC_Control
+                          actionItem: "=props.stateItem"
                           actionCommand: PAUSE
                       # Stop
                       - component: oh-button
@@ -449,8 +459,8 @@ slots:
                           style:
                             color: "#cc4400"
                           action: command
-                          actionItem: SC_CC_Stop
-                          actionCommand: "ON"
+                          actionItem: "=props.stateItem"
+                          actionCommand: STOP
                       # Repeat
                       - component: oh-button
                         config:
@@ -464,25 +474,25 @@ slots:
                       # Mute
                       - component: oh-button
                         config:
-                          iconF7: "=(items['SC_CC_Mute'].state === 'ON') ? 'speaker_slash_fill' : 'speaker_2_fill'"
+                          iconF7: "=(@@props.muteItem === 'ON') ? 'speaker_slash_fill' : 'speaker_2_fill'"
                           iconSize: 20
                           style:
-                            color: "=(items['SC_CC_Mute'].state === 'ON') ? '#ff5500' : '#777'"
+                            color: "=(@@props.muteItem === 'ON') ? '#ff5500' : '#777'"
                             marginLeft: 8px
                           action: command
-                          actionItem: SC_CC_Mute
-                          actionCommand: "=(items['SC_CC_Mute'].state === 'ON') ? 'OFF' : 'ON'"
+                          actionItem: "=props.muteItem"
+                          actionCommand: "=(@@props.muteItem === 'ON') ? 'OFF' : 'ON'"
                       # Volume Slider
                       - component: oh-slider
                         config:
-                          item: SC_CC_Volume
+                          item: "=props.volumeItem"
                           min: 0
                           max: 100
                           step: 5
                           style:
                             width: 80px
                             marginLeft: 6px
-                            "--f7-range-bar-bg-color": "#2a2a3a"
+                            "--f7-range-bar-bg-color": "var(--f7-range-bar-bg-color)"
 
                 # Rechts: aktives Chromecast-Gerät
                 - component: f7-chip
