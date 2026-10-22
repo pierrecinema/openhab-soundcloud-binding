@@ -185,9 +185,9 @@ Same items, different look: the blurred cover fills the background, long titles 
 | `queueIndexItem`, `queueSizeItem` | | → `player#queue-index`, `player#queue-size` (shows "3 / 12") |
 | `shuffleItem`, `repeatItem` | | → `player#shuffle`, `player#repeat` |
 | `chromecastTag` | | Tag on your Chromecast `playuri` items (default `Chromecast`) |
-| `ccControlItem`, `ccStopItem`, `ccVolumeItem`, `ccMuteItem` | | Proxy items (defaults `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`) |
+| `ccControlItem`, `ccStopItem`, `ccVolumeItem`, `ccMuteItem`, `ccPlayUriItem` | | Proxy items (defaults `SC_CC_Control`, `SC_CC_Stop`, `SC_CC_Volume`, `SC_CC_Mute`, `SC_CC_PlayURI`) |
 
-Play/Pause: while playing, Play pauses the Chromecast; while paused it resumes (no restart); when stopped it sends the stream URL to the selected Chromecast again. New tracks start automatically through the [auto-play rule](#auto-play-rule).
+Play/Pause: while playing, Play pauses the Chromecast; while paused it resumes (no restart); when stopped it sends the stream URL to the selected Chromecast again (via `SC_CC_PlayURI` and the router). New tracks start automatically through the [auto-play rule](#auto-play-rule).
 
 ---
 
@@ -267,7 +267,7 @@ The rule looks up the Chromecast thing behind the selected `playuri` item and fo
 
 ### Auto-play rule
 
-Starts every newly loaded track on the selected Chromecast (search result, next / previous, playlist, repeat). Create a rule with an **Item State Change** trigger on `SC_StreamURL` (the item linked to `player#stream-url`) and paste [`openhab-conf/rules/soundcloud_autoplay.js`](openhab-conf/rules/soundcloud_autoplay.js).
+Starts every newly loaded track on the selected Chromecast (search result, next / previous, playlist, repeat). Create a rule with an **Item State Change** trigger on `SC_StreamURL` (the item linked to `player#stream-url`) and paste [`openhab-conf/rules/soundcloud_autoplay.js`](openhab-conf/rules/soundcloud_autoplay.js). The rule sends the URL through `SC_CC_PlayURI`, so the router forwards it to the selected device and **resends it once after 5 s** if the Chromecast is not playing yet. This happens when no cast app was running: the first command only launches the receiver app.
 
 > Trigger on the **stream URL**, not on the playback state: loading a new track while already playing does not change the state, and resuming after a pause would restart the track.
 

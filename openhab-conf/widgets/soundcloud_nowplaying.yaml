@@ -136,6 +136,12 @@ props:
       context: item
       default: SC_CC_Control
       groupName: cast
+    - name: ccPlayUriItem
+      label: Proxy Play-URI
+      type: TEXT
+      context: item
+      default: SC_CC_PlayURI
+      groupName: cast
     - name: ccStopItem
       label: Proxy Stop
       type: TEXT
@@ -499,7 +505,7 @@ slots:
                     iconF7: "=@@props.stateItem === 'PLAYING' ? 'pause_fill' : 'play_fill'"
                     iconSize: 30
                     action: command
-                    actionItem: "=['PLAYING', 'PAUSED'].includes(@@props.stateItem) ? props.ccControlItem : (('' + @@props.streamUrlItem).indexOf('http') === 0 && ('' + @@props.targetItem).length > 4 ? @@props.targetItem : props.trackIdItem)"
+                    actionItem: "=['PLAYING', 'PAUSED'].includes(@@props.stateItem) ? props.ccControlItem : (('' + @@props.streamUrlItem).indexOf('http') === 0 && ('' + @@props.targetItem).length > 4 ? props.ccPlayUriItem : props.trackIdItem)"
                     actionCommand: "=@@props.stateItem === 'PLAYING' ? 'PAUSE' : (@@props.stateItem === 'PAUSED' ? 'PLAY' : (('' + @@props.streamUrlItem).indexOf('http') === 0 && ('' + @@props.targetItem).length > 4 ? @@props.streamUrlItem : '' + @@props.trackIdItem))"
                     style:
                       display: flex

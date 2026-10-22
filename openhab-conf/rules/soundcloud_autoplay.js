@@ -8,10 +8,10 @@ var streamUrl = String(items.getItem('SC_StreamURL').state);
 var target = String(items.getItem('SC_CCTarget').state);
 
 if (streamUrl.indexOf('http') !== 0) {
-  logger.debug('SoundCloud AutoPlay: no stream URL, aborted');
+  console.debug('SoundCloud AutoPlay: no stream URL, aborted');
 } else if (!target || target === 'NULL' || target === '') {
-  logger.debug('SoundCloud AutoPlay: no Chromecast target, aborted');
+  console.debug('SoundCloud AutoPlay: no Chromecast target, aborted');
 } else {
-  logger.info('SoundCloud AutoPlay: sending to {}', target);
+  console.info('SoundCloud AutoPlay: sending to ' + target);
   items.getItem(target).sendCommand(streamUrl);
 }
