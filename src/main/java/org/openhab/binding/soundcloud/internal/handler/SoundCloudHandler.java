@@ -698,7 +698,8 @@ public class SoundCloudHandler extends BaseThingHandler {
         SoundCloudConfiguration config = getConfigAs(SoundCloudConfiguration.class);
         String origin = extractOrigin(config.redirectUri);
 
-        String proxyUrl = origin + SEEK_PATH
+        // Dateiendung im Pfad, damit der Chromecast das Format erkennt (Servlet nimmt Unterpfade an)
+        String proxyUrl = origin + SEEK_PATH + ("hls".equals(seekType) ? "/seek.m3u8" : "/seek.mp3")
                 + "?url=" + URLEncoder.encode(seekUrl, StandardCharsets.UTF_8)
                 + "&from=" + target
                 + "&type=" + seekType;

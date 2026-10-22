@@ -499,7 +499,7 @@ slots:
                     action: command
                     actionItem: =props.stateItem
                     actionCommand: PREVIOUS
-                # Play / Pause: Pause und Fortsetzen über den Chromecast; gestoppt -> PLAY ans Binding (startet den Track neu, ab v1.5.6)
+                # Play / Pause: Pause und Fortsetzen über den Chromecast; gestoppt -> PLAY ans Binding (startet den Track neu, ab v1.5.7)
                 - component: oh-link
                   config:
                     iconF7: "=@@props.stateItem === 'PLAYING' ? 'pause_fill' : 'play_fill'"

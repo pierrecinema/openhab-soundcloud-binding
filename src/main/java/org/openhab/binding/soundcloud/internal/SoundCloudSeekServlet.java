@@ -28,7 +28,10 @@ import org.slf4j.LoggerFactory;
  * MP3-Modus  (type=mp3):  Range-Request auf progressive URL, liefert audio/mpeg ab Byte-Offset.
  * HLS-Modus  (type=hls):  Parst m3u8 und überspringt Segmente bis zum Ziel-Offset.
  *
- * GET /soundcloud/seek?url=ENCODED_URL&from=SECONDS[&type=mp3|hls]
+ * GET /soundcloud/seek[/seek.m3u8|/seek.mp3]?url=ENCODED_URL&from=SECONDS[&type=mp3|hls]
+ *
+ * Der Chromecast-Receiver lädt HLS-Playlists per XHR und verlangt CORS-Header; die Dateiendung
+ * im Pfad hilft ihm, das Format zu erkennen.
  */
 @NonNullByDefault
 public class SoundCloudSeekServlet extends HttpServlet {
@@ -48,8 +51,23 @@ public class SoundCloudSeekServlet extends HttpServlet {
     }
 
     @Override
+    protected void doOptions(HttpServletRequest req, HttpServletResponse resp)
+            throws ServletException, IOException {
+        addCorsHeaders(resp);
+        resp.setStatus(HttpServletResponse.SC_NO_CONTENT);
+    }
+
+    private static void addCorsHeaders(HttpServletResponse resp) {
+        resp.setHeader("Access-Control-Allow-Origin", "*");
+        resp.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+        resp.setHeader("Access-Control-Allow-Headers", "Range, Content-Type");
+        resp.setHeader("Access-Control-Expose-Headers", "Content-Length, Content-Range");
+    }
+
+    @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
             throws ServletException, IOException {
+        addCorsHeaders(resp);
         String urlParam = req.getParameter("url");
         String fromParam = req.getParameter("from");
         String typeParam = req.getParameter("type");
@@ -151,7 +169,7 @@ public class SoundCloudSeekServlet extends HttpServlet {
             }
 
             String modified = buildSeekPlaylist(response.body(), fromSeconds);
-            resp.setContentType("application/x-mpegURL");
+            resp.setContentType("application/vnd.apple.mpegurl");
             resp.setCharacterEncoding("UTF-8");
             resp.getWriter().write(modified);
             logger.debug("HLS-Seek-Playlist ab {}s ausgeliefert ({} Zeichen)", fromSeconds, modified.length());
